@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>مصاريفي</title>
+  <meta name="description" content="تطبيق بسيط وجميل لتسجيل وتنظيم مصاريفك">
+  <meta name="theme-color" content="#0d9488" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#101418" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="مصاريفي">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ===== الرئيسية ===== -->
+  <main id="view-home" class="view active">
+    <header class="hero">
+      <p class="hero-label">مصاريف <span id="home-month-name"></span></p>
+      <h1 class="hero-total" id="home-total">0 ر.س</h1>
+      <p class="hero-sub" id="home-count"></p>
+    </header>
+    <section class="section">
+      <h2 class="section-title">الفئات</h2>
+      <div id="home-categories" class="category-grid"></div>
+    </section>
+    <div id="home-empty" class="empty-state hidden">
+      <div class="empty-icon">👋</div>
+      <p class="empty-title">أهلاً بك في مصاريفي</p>
+      <p class="empty-text">اضغط زر <b>+</b> بالأسفل وسجّل أول مصروف لك</p>
+    </div>
+  </main>
+
+  <!-- ===== السجل ===== -->
+  <main id="view-record" class="view">
+    <header class="page-header">
+      <h1>السجل</h1>
+      <div class="month-switcher">
+        <button class="month-btn" id="month-prev" aria-label="الشهر السابق">›</button>
+        <span id="record-month-name" class="month-name"></span>
+        <button class="month-btn" id="month-next" aria-label="الشهر التالي">‹</button>
+      </div>
+      <p class="month-total" id="record-total"></p>
+    </header>
+    <div id="record-list" class="record-list"></div>
+    <div id="record-empty" class="empty-state hidden">
+      <div class="empty-icon">🗒️</div>
+      <p class="empty-title">لا توجد مصاريف</p>
+      <p class="empty-text">ما سجّلت أي مصروف في هذا الشهر</p>
+    </div>
+  </main>
+
+  <!-- ===== الفئات ===== -->
+  <main id="view-categories" class="view">
+    <header class="page-header">
+      <h1>الفئات</h1>
+      <p class="page-sub">نظّم مصاريفك بفئات تناسبك</p>
+    </header>
+    <div id="categories-list" class="categories-list"></div>
+    <button class="btn-outline" id="btn-add-category">＋ إضافة فئة جديدة</button>
+  </main>
+
+  <!-- ===== شريط التنقل ===== -->
+  <nav class="tabbar">
+    <button class="tab active" data-view="home">
+      <span class="tab-icon">🏠</span><span class="tab-label">الرئيسية</span>
+    </button>
+    <button class="fab" id="btn-add-expense" aria-label="إضافة مصروف">＋</button>
+    <button class="tab" data-view="record">
+      <span class="tab-icon">📋</span><span class="tab-label">السجل</span>
+    </button>
+    <button class="tab" data-view="categories">
+      <span class="tab-icon">🗂️</span><span class="tab-label">الفئات</span>
+    </button>
+  </nav>
+
+  <!-- ===== نافذة إضافة/تعديل مصروف ===== -->
+  <div class="sheet-backdrop hidden" id="expense-backdrop"></div>
+  <div class="sheet hidden" id="expense-sheet" role="dialog" aria-modal="true">
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title" id="expense-sheet-title">إضافة مصروف</h2>
+    <form id="expense-form">
+      <div class="amount-wrap">
+        <input type="text" inputmode="decimal" id="expense-amount" class="amount-input" placeholder="0" autocomplete="off" required>
+        <span class="amount-currency">ر.س</span>
+      </div>
+      <label class="field-label">الفئة</label>
+      <div id="expense-categories" class="chip-row"></div>
+      <label class="field-label" for="expense-date">التاريخ</label>
+      <input type="date" id="expense-date" class="field-input" required>
+      <label class="field-label" for="expense-note">ملاحظة <small>(اختياري)</small></label>
+      <input type="text" id="expense-note" class="field-input" placeholder="مثال: فاتورة الكهرباء" maxlength="60">
+      <div class="sheet-actions">
+        <button type="submit" class="btn-primary" id="expense-save">حفظ</button>
+        <button type="button" class="btn-danger hidden" id="expense-delete">حذف</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== نافذة إضافة/تعديل فئة ===== -->
+  <div class="sheet-backdrop hidden" id="category-backdrop"></div>
+  <div class="sheet hidden" id="category-sheet" role="dialog" aria-modal="true">
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title" id="category-sheet-title">فئة جديدة</h2>
+    <form id="category-form">
+      <label class="field-label" for="category-name">اسم الفئة</label>
+      <input type="text" id="category-name" class="field-input" placeholder="مثال: مدرسة" maxlength="20" required>
+      <label class="field-label">الأيقونة</label>
+      <div id="category-icons" class="picker-row"></div>
+      <label class="field-label">اللون</label>
+      <div id="category-colors" class="picker-row"></div>
+      <div class="sheet-actions">
+        <button type="submit" class="btn-primary">حفظ</button>
+        <button type="button" class="btn-danger hidden" id="category-delete">حذف</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== نافذة تأكيد ===== -->
+  <div class="sheet-backdrop hidden" id="confirm-backdrop"></div>
+  <div class="confirm-box hidden" id="confirm-box" role="alertdialog" aria-modal="true">
+    <p id="confirm-text"></p>
+    <div class="confirm-actions">
+      <button class="btn-danger" id="confirm-yes">حذف</button>
+      <button class="btn-outline" id="confirm-no">إلغاء</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+    }
+  </script>
+</body>
+</html>
