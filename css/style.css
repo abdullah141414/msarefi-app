@@ -507,6 +507,13 @@ input[type="date"].field-input { min-height: 48px; }
   line-height: 1.8;
   margin-top: 10px;
 }
+.smshelp-subtitle {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 18px 0 10px;
+}
+.btn-relay-save { margin-top: 10px; }
+#relay-sync-now { margin-top: 16px; }
 
 /* ===== نافذة التأكيد ===== */
 .confirm-box {

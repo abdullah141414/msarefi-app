@@ -89,17 +89,60 @@
   $('category-backdrop').addEventListener('click', () => closeSheet('category-sheet'));
   $('smshelp-backdrop').addEventListener('click', () => closeSheet('smshelp-sheet'));
 
-  // ===== شرح الإدخال التلقائي =====
-  const APP_URL = 'https://abdullah141414.github.io/msarefi-app/';
-  $('smshelp-url').textContent = `${APP_URL}#sms=`;
-  $('btn-sms-help').addEventListener('click', () => openSheet('smshelp-sheet'));
-  $('smshelp-copy').addEventListener('click', async () => {
+  // ===== شرح الإدخال التلقائي وإعداد الصندوق =====
+  function relayInUrl(relay) {
+    return `${relay.origin}/in?key=${encodeURIComponent(relay.key)}`;
+  }
+
+  function renderRelayUi() {
+    const relay = Store.getRelay();
+    $('relay-configured').classList.toggle('hidden', !relay);
+    if (relay) {
+      $('relay-url-input').value = `${relay.origin}/?key=${relay.key}`;
+      $('smshelp-url').textContent = relayInUrl(relay);
+      $('relay-status').textContent = '✓ الصندوق مربوط';
+    } else {
+      $('relay-status').textContent = 'بعد ما نجهز صندوقك، الصق رابطه هنا واحفظه';
+    }
+  }
+
+  $('btn-sms-help').addEventListener('click', () => { renderRelayUi(); openSheet('smshelp-sheet'); });
+
+  $('relay-save').addEventListener('click', () => {
+    const raw = $('relay-url-input').value.trim();
+    if (!raw) { toast('الصق رابط الصندوق أولاً'); return; }
+    let parsed;
     try {
-      await navigator.clipboard.writeText(`${APP_URL}#sms=`);
-      toast('تم نسخ الرابط ✓');
+      parsed = new URL(raw);
+    } catch {
+      toast('الرابط غير صحيح — انسخه كاملاً');
+      return;
+    }
+    const key = parsed.searchParams.get('key');
+    if (!key) { toast('الرابط ناقص المفتاح السري (key)'); return; }
+    Store.setRelay({ origin: parsed.origin, key });
+    renderRelayUi();
+    toast('تم ربط الصندوق ✓');
+    syncRelay();
+  });
+
+  $('smshelp-copy').addEventListener('click', async () => {
+    const relay = Store.getRelay();
+    if (!relay) return;
+    try {
+      await navigator.clipboard.writeText(relayInUrl(relay));
+      toast('تم نسخ رابط الأتمتة ✓');
     } catch {
       toast('ما قدرت أنسخ — انسخه يدوياً');
     }
+  });
+
+  $('relay-sync-now').addEventListener('click', async () => {
+    toast('جاري المزامنة...');
+    const saved = await syncRelay();
+    if (saved === null) toast('ما قدرت أوصل للصندوق — تأكد من الإنترنت والرابط');
+    else if (saved === 0) toast('ما في رسائل جديدة بالصندوق');
+    // إذا فيه عمليات جديدة، syncRelay عرض الإشعار بنفسه
   });
 
   // ===== نافذة التأكيد =====
@@ -407,40 +450,19 @@
     renderCategories();
   }
 
-  // ===== الإدخال التلقائي من رسائل البنك (عبر أتمتة الاختصارات) =====
-  function handleSmsFromUrl() {
-    const hash = window.location.hash;
-    const marker = '#sms=';
-    if (!hash.startsWith(marker)) return;
-
-    let raw = '';
-    try {
-      raw = decodeURIComponent(hash.slice(marker.length));
-    } catch {
-      raw = hash.slice(marker.length);
-    }
-    // تنظيف العنوان حتى لا يُعاد التسجيل عند التحديث
-    history.replaceState(null, '', window.location.pathname + window.location.search);
-    if (!raw.trim()) return;
+  // ===== الإدخال التلقائي من رسائل البنك =====
+  // استيراد نص رسالة: يحفظ المصروف إذا كانت عملية شراء ويرجع الحالة
+  function importSmsText(raw) {
+    if (!raw || !raw.trim()) return { status: 'empty' };
 
     const fp = SmsParser.fingerprint(raw);
-    if (Store.hasSmsHash(fp)) {
-      toast('هذي الرسالة مسجلة من قبل');
-      return;
-    }
+    if (Store.hasSmsHash(fp)) return { status: 'duplicate' };
 
     const result = SmsParser.parse(raw);
-
     if (!result.ok) {
-      if (result.reason === 'not-purchase') {
-        toast('الرسالة ليست عملية شراء — ما انحفظ شي');
-      } else if (result.reason === 'no-amount') {
-        // ما قدرنا نستخرج المبلغ — نفتح النافذة والمستخدم يكمل
-        toast('ما قدرت أقرأ المبلغ — أكمل البيانات');
-        openExpenseSheet();
-        $('expense-note').value = (result.merchant || raw).slice(0, 60);
-      }
-      return;
+      // نسجل بصمة غير المشتريات حتى ما نعيد فحصها كل مرة
+      if (result.reason === 'not-purchase') Store.addSmsHash(fp);
+      return { status: result.reason, merchant: result.merchant, raw };
     }
 
     const categoryId = SmsParser.guessCategory(result.merchant, raw, categories);
@@ -454,13 +476,84 @@
     expenses.push(expense);
     Store.setExpenses(expenses);
     Store.addSmsHash(fp);
-    recordMonth = expense.date.slice(0, 7);
-    renderAll();
-
-    const cat = catById(categoryId);
-    toast(`✓ تم تسجيل ${money(expense.amount)}${expense.note ? ` من ${expense.note}` : ''} في «${cat.name}»`);
+    return { status: 'saved', expense };
   }
+
+  // المدخل المباشر: فتح التطبيق برابط فيه نص الرسالة (#sms=)
+  function handleSmsFromUrl() {
+    const hash = window.location.hash;
+    const marker = '#sms=';
+    if (!hash.startsWith(marker)) return;
+
+    let raw = '';
+    try {
+      raw = decodeURIComponent(hash.slice(marker.length));
+    } catch {
+      raw = hash.slice(marker.length);
+    }
+    // تنظيف العنوان حتى لا يُعاد التسجيل عند التحديث
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+
+    const r = importSmsText(raw);
+    if (r.status === 'saved') {
+      recordMonth = r.expense.date.slice(0, 7);
+      renderAll();
+      const cat = catById(r.expense.categoryId);
+      toast(`✓ تم تسجيل ${money(r.expense.amount)}${r.expense.note ? ` من ${r.expense.note}` : ''} في «${cat.name}»`);
+    } else if (r.status === 'duplicate') {
+      toast('هذي الرسالة مسجلة من قبل');
+    } else if (r.status === 'not-purchase') {
+      toast('الرسالة ليست عملية شراء — ما انحفظ شي');
+    } else if (r.status === 'no-amount') {
+      toast('ما قدرت أقرأ المبلغ — أكمل البيانات');
+      openExpenseSheet();
+      $('expense-note').value = (r.merchant || r.raw).slice(0, 60);
+    }
+  }
+
+  // ===== المزامنة مع صندوق البريد (Cloudflare) =====
+  let syncing = false;
+  // ترجع عدد العمليات المسجلة، أو null إذا تعذر الوصول للصندوق
+  async function syncRelay() {
+    const relay = Store.getRelay();
+    if (!relay || syncing) return 0;
+    syncing = true;
+    try {
+      const res = await fetch(`${relay.origin}/pull?key=${encodeURIComponent(relay.key)}`);
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      const msgs = data.messages || [];
+      if (!msgs.length) return 0;
+
+      let saved = 0, needInput = null;
+      for (const m of msgs) {
+        const r = importSmsText(m.text);
+        if (r.status === 'saved') saved++;
+        else if (r.status === 'no-amount') needInput = r;
+      }
+      if (saved > 0) {
+        renderAll();
+        toast(`✓ تم تسجيل ${fmtMoney.format(saved)} ${saved === 1 ? 'عملية جديدة' : 'عمليات جديدة'} من رسائل البنك`);
+      }
+      if (needInput && saved === 0) {
+        toast('وصلت رسالة ما قدرت أقرأ مبلغها — أكمل البيانات');
+        openExpenseSheet();
+        $('expense-note').value = (needInput.merchant || needInput.raw).slice(0, 60);
+      }
+      return saved;
+    } catch {
+      // ما في اتصال أو الصندوق غير متاح — نحاول في الفتحة الجاية بصمت
+      return null;
+    } finally {
+      syncing = false;
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') syncRelay();
+  });
 
   renderAll();
   handleSmsFromUrl();
+  syncRelay();
 })();

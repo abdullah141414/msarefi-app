@@ -133,19 +133,30 @@
     <div class="sheet-handle"></div>
     <h2 class="sheet-title">🪄 الإدخال التلقائي</h2>
     <div class="smshelp-body">
-      <p class="smshelp-intro">بإعداد لمرة وحدة في تطبيق <b>«الاختصارات»</b> (موجود بجوالك)، أي رسالة شراء توصلك من البنك تنفتح بالتطبيق وتنحفظ بنفسها.</p>
-      <ol class="smshelp-steps">
-        <li>افتح تطبيق <b>الاختصارات</b> ← تبويب <b>أتمتة</b> ← <b>＋</b></li>
-        <li>اختر <b>«رسالة»</b> ← في خانة «تحتوي الرسالة على» اكتب: <b>شراء</b> ← اختر <b>تشغيل فوراً</b> ثم التالي</li>
-        <li>أضف إجراء <b>«ترميز URL»</b> واجعل مدخله <b>«الرسالة الأحدث»</b> (Shortcut Input)</li>
-        <li>أضف إجراء <b>«فتح عناوين URL»</b> والصق فيه الرابط التالي ثم ألحق به «النص المرمّز»:</li>
-      </ol>
-      <div class="smshelp-url-row">
-        <code class="smshelp-url" id="smshelp-url"></code>
-        <button class="btn-outline btn-copy" id="smshelp-copy">نسخ</button>
+      <p class="smshelp-intro">رسائل الشراء تنحفظ بنفسها <b>حتى والجوال مقفل</b> — الأتمتة ترسل الرسالة بصمت لصندوقك الخاص، والتطبيق يسحبها أول ما تفتحه.</p>
+
+      <h3 class="smshelp-subtitle">١. اربط صندوقك</h3>
+      <input type="url" id="relay-url-input" class="field-input" dir="ltr" placeholder="الصق رابط الصندوق هنا" autocomplete="off">
+      <button class="btn-outline btn-relay-save" id="relay-save">حفظ الرابط</button>
+      <p class="smshelp-note" id="relay-status"></p>
+
+      <div id="relay-configured" class="hidden">
+        <h3 class="smshelp-subtitle">٢. جهّز الأتمتة في «الاختصارات»</h3>
+        <ol class="smshelp-steps">
+          <li>افتح تطبيق <b>الاختصارات</b> ← تبويب <b>أتمتة</b> ← <b>＋</b></li>
+          <li>اختر <b>«رسالة»</b> ← في «تحتوي الرسالة على» اكتب: <b>شراء</b> ← فعّل <b>تشغيل فوراً</b> ثم التالي</li>
+          <li>أضف إجراء <b>«الحصول على محتويات URL»</b> (Get Contents of URL) والصق فيه رابط الأتمتة:</li>
+        </ol>
+        <div class="smshelp-url-row">
+          <code class="smshelp-url" id="smshelp-url"></code>
+          <button class="btn-outline btn-copy" id="smshelp-copy">نسخ</button>
+        </div>
+        <ol class="smshelp-steps" start="4">
+          <li>اضغط سهم الإجراء لإظهار الخيارات ← <b>الطريقة: POST</b> ← <b>نص الطلب: ملف</b> ← اختر متغير <b>«الرسالة الأحدث»</b> (Shortcut Input)</li>
+          <li>كرر نفس الأتمتة بكلمة <b>Purchase</b> إذا رسائل بنكك بالإنجليزي</li>
+        </ol>
+        <button class="btn-outline" id="relay-sync-now">🔄 مزامنة الآن</button>
       </div>
-      <p class="smshelp-note">⚠️ ملاحظة: إذا وصلتك الرسالة والجوال مقفل، قد ما تنحفظ تلقائياً وقتها — سجّلها يدوياً. هذا قيد من نظام آبل.</p>
-      <p class="smshelp-note">🔁 كرر نفس الأتمتة بكلمة <b>Purchase</b> إذا رسائل بنكك تجيك بالإنجليزي.</p>
     </div>
   </div>
 

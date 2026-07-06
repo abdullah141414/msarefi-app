@@ -3,6 +3,7 @@ const Store = (() => {
   const KEY_EXPENSES = 'masareefi.expenses';
   const KEY_CATEGORIES = 'masareefi.categories';
   const KEY_SMS_HASHES = 'masareefi.smsHashes';
+  const KEY_RELAY = 'masareefi.relay';
 
   const DEFAULT_CATEGORIES = [
     { id: 'home',   name: 'بيت',      icon: '🏠', color: '#0ea5e9' },
@@ -57,5 +58,9 @@ const Store = (() => {
     save(KEY_SMS_HASHES, hashes.slice(-50));
   }
 
-  return { getCategories, setCategories, getExpenses, setExpenses, newId, hasSmsHash, addSmsHash };
+  // إعدادات صندوق البريد (Cloudflare) — { origin, key } أو null
+  function getRelay() { return load(KEY_RELAY, null); }
+  function setRelay(relay) { save(KEY_RELAY, relay); }
+
+  return { getCategories, setCategories, getExpenses, setExpenses, newId, hasSmsHash, addSmsHash, getRelay, setRelay };
 })();
