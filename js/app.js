@@ -3,7 +3,8 @@
   // ===== الحالة =====
   let categories = Store.getCategories();
   let expenses = Store.getExpenses();
-  let recordMonth = monthKey(new Date());     // الشهر المعروض في السجل "YYYY-MM"
+  let recordCycle;                            // الدورة المعروضة في السجل (يُضبط بعد تعريف الدوال)
+  let statsCycle;                             // الدورة المعروضة في الإحصائيات
   let editingExpenseId = null;
   let editingCategoryId = null;
   let selectedCategoryId = null;              // داخل نافذة المصروف
@@ -19,32 +20,67 @@
   const fmtMoney = new Intl.NumberFormat('ar-SA-u-nu-latn', { maximumFractionDigits: 2 });
   const fmtMonth = new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn', { month: 'long', year: 'numeric' });
   const fmtDay = new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
+  const fmtDayMonth = new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long' });
+  const fmtMonthShort = new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn', { month: 'short' });
 
   function money(n) { return `${fmtMoney.format(n)} ر.س`; }
 
-  function monthKey(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function isoOf(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+
+  function todayISO() { return isoOf(new Date()); }
+
+  // ===== الدورة الشهرية (تتبع يوم بداية يحدده المستخدم) =====
+  function cycleStartDay() { return Store.getCycleStartDay(); }
+
+  // بداية الدورة التي يقع فيها تاريخ معيّن (كائن Date)
+  function cycleStartOf(date) {
+    const s = cycleStartDay();
+    const y = date.getFullYear(), m = date.getMonth();
+    return date.getDate() >= s ? new Date(y, m, s) : new Date(y, m - 1, s);
   }
 
-  function todayISO() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // مُعرّف الدورة = ISO لبدايتها "YYYY-MM-DD"
+  function cycleKeyOf(date) { return isoOf(cycleStartOf(date)); }
+  function cycleKeyOfISO(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return cycleKeyOf(new Date(y, m - 1, d));
+  }
+  function currentCycleKey() { return cycleKeyOf(new Date()); }
+
+  // حدود الدورة: البداية والبداية التالية (نهاية غير شاملة)
+  function cycleBounds(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    return { start: new Date(y, m - 1, d), next: new Date(y, m, d) };
   }
 
-  function monthKeyToDate(key) {
-    const [y, m] = key.split('-').map(Number);
-    return new Date(y, m - 1, 1);
+  function expensesOfCycle(key) {
+    const { start, next } = cycleBounds(key);
+    const s = isoOf(start), n = isoOf(next);
+    return expenses.filter((e) => e.date >= s && e.date < n);
+  }
+
+  function shiftCycle(key, delta) {
+    const { start } = cycleBounds(key);
+    return cycleKeyOf(new Date(start.getFullYear(), start.getMonth() + delta, start.getDate()));
+  }
+
+  function cycleLabel(key) {
+    const { start, next } = cycleBounds(key);
+    if (cycleStartDay() === 1) return fmtMonth.format(start);
+    const end = new Date(next); end.setDate(end.getDate() - 1);
+    return `${fmtDayMonth.format(start)} – ${fmtDayMonth.format(end)}`;
   }
 
   function catById(id) {
     return categories.find((c) => c.id === id) || categories.find((c) => c.id === 'other') || categories[0];
   }
 
-  function expensesOfMonth(key) {
-    return expenses.filter((e) => e.date.startsWith(key));
-  }
-
   function sum(list) { return list.reduce((t, e) => t + e.amount, 0); }
+
+  recordCycle = currentCycleKey();
+  statsCycle = currentCycleKey();
 
   let toastTimer;
   function toast(msg) {
@@ -164,12 +200,12 @@
 
   // ===== الرئيسية =====
   function renderHome() {
-    const key = monthKey(new Date());
-    const monthExpenses = expensesOfMonth(key);
-    $('home-month-name').textContent = fmtMonth.format(new Date());
-    $('home-total').textContent = money(sum(monthExpenses));
-    $('home-count').textContent = monthExpenses.length
-      ? `${fmtMoney.format(monthExpenses.length)} ${monthExpenses.length === 1 ? 'مصروف' : 'مصاريف'} هذا الشهر`
+    const key = currentCycleKey();
+    const cycleExpenses = expensesOfCycle(key);
+    $('home-month-name').textContent = cycleLabel(key);
+    $('home-total').textContent = money(sum(cycleExpenses));
+    $('home-count').textContent = cycleExpenses.length
+      ? `${fmtMoney.format(cycleExpenses.length)} ${cycleExpenses.length === 1 ? 'مصروف' : 'مصاريف'} هذا الشهر`
       : 'ما سجّلت شي هذا الشهر بعد';
 
     const grid = $('home-categories');
@@ -178,7 +214,7 @@
     $('home-empty').classList.toggle('hidden', hasAny);
 
     categories.forEach((cat) => {
-      const total = sum(monthExpenses.filter((e) => e.categoryId === cat.id));
+      const total = sum(cycleExpenses.filter((e) => e.categoryId === cat.id));
       const card = document.createElement('button');
       card.className = 'category-card';
       card.style.setProperty('--cat-color', cat.color);
@@ -193,22 +229,21 @@
 
   // ===== السجل =====
   function renderRecord() {
-    const monthDate = monthKeyToDate(recordMonth);
-    $('record-month-name').textContent = fmtMonth.format(monthDate);
+    $('record-month-name').textContent = cycleLabel(recordCycle);
 
-    const monthExpenses = expensesOfMonth(recordMonth)
+    const cycleExpenses = expensesOfCycle(recordCycle)
       .slice()
       .sort((a, b) => b.date.localeCompare(a.date));
 
-    $('record-total').textContent = monthExpenses.length ? `الإجمالي: ${money(sum(monthExpenses))}` : '';
-    $('record-empty').classList.toggle('hidden', monthExpenses.length > 0);
+    $('record-total').textContent = cycleExpenses.length ? `الإجمالي: ${money(sum(cycleExpenses))}` : '';
+    $('record-empty').classList.toggle('hidden', cycleExpenses.length > 0);
 
     const list = $('record-list');
     list.innerHTML = '';
 
     // تجميع حسب اليوم
     const byDay = new Map();
-    monthExpenses.forEach((e) => {
+    cycleExpenses.forEach((e) => {
       if (!byDay.has(e.date)) byDay.set(e.date, []);
       byDay.get(e.date).push(e);
     });
@@ -245,17 +280,109 @@
   }
 
   $('month-prev').addEventListener('click', () => {
-    const d = monthKeyToDate(recordMonth);
-    d.setMonth(d.getMonth() - 1);
-    recordMonth = monthKey(d);
+    recordCycle = shiftCycle(recordCycle, -1);
     renderRecord();
   });
   $('month-next').addEventListener('click', () => {
-    const d = monthKeyToDate(recordMonth);
-    d.setMonth(d.getMonth() + 1);
-    recordMonth = monthKey(d);
+    recordCycle = shiftCycle(recordCycle, 1);
     renderRecord();
   });
+
+  // ===== الإحصائيات =====
+  function renderStats() {
+    $('stats-month-name').textContent = cycleLabel(statsCycle);
+    const cycleExpenses = expensesOfCycle(statsCycle);
+    const total = sum(cycleExpenses);
+
+    const hasData = cycleExpenses.length > 0;
+    $('stats-content').classList.toggle('hidden', !hasData);
+    $('stats-empty').classList.toggle('hidden', hasData);
+    if (!hasData) return;
+
+    // الدائرة والإجمالي
+    const breakdown = Stats.categoryBreakdown(cycleExpenses, categories);
+    $('stats-donut').innerHTML = Stats.donutSVG(breakdown);
+    $('donut-total').textContent = money(total);
+
+    // قائمة الفئات المرتبة
+    const bd = $('stats-breakdown');
+    bd.innerHTML = '';
+    breakdown.forEach((row) => {
+      const item = document.createElement('div');
+      item.className = 'breakdown-row';
+      item.innerHTML = `
+        <span class="bd-icon" style="--item-color:${row.cat.color}">${row.cat.icon}</span>
+        <div class="bd-main">
+          <div class="bd-top">
+            <span class="bd-name">${escapeHtml(row.cat.name)}</span>
+            <span class="bd-amount">${money(row.total)}</span>
+          </div>
+          <div class="bd-bar"><span style="width:${row.pct.toFixed(1)}%;background:${row.cat.color}"></span></div>
+        </div>
+        <span class="bd-pct">${fmtMoney.format(Math.round(row.pct))}٪</span>`;
+      bd.appendChild(item);
+    });
+
+    // أعمدة آخر 6 دورات
+    const series = [];
+    let k = statsCycle;
+    for (let i = 0; i < 6; i++) {
+      const { start } = cycleBounds(k);
+      series.unshift({
+        label: fmtMonthShort.format(start),
+        total: sum(expensesOfCycle(k)),
+        current: k === statsCycle,
+      });
+      k = shiftCycle(k, -1);
+    }
+    $('stats-bars').innerHTML = Stats.barsSVG(series);
+
+    // أعلى المتاجر
+    const merchants = Stats.topMerchants(cycleExpenses, 5);
+    const ml = $('stats-merchants');
+    ml.innerHTML = '';
+    if (!merchants.length) {
+      ml.innerHTML = '<p class="merchants-empty">ما فيه أسماء متاجر في مصاريف هذا الشهر</p>';
+    } else {
+      merchants.forEach((m, i) => {
+        const row = document.createElement('div');
+        row.className = 'merchant-row';
+        row.innerHTML = `
+          <span class="merchant-rank">${fmtMoney.format(i + 1)}</span>
+          <span class="merchant-name">${escapeHtml(m.name)}</span>
+          <span class="merchant-amount">${money(m.total)}</span>`;
+        ml.appendChild(row);
+      });
+    }
+  }
+
+  $('stats-prev').addEventListener('click', () => {
+    statsCycle = shiftCycle(statsCycle, -1);
+    renderStats();
+  });
+  $('stats-next').addEventListener('click', () => {
+    statsCycle = shiftCycle(statsCycle, 1);
+    renderStats();
+  });
+
+  // ===== إعداد بداية الشهر (دورة الراتب) =====
+  (function initCycleSetting() {
+    const sel = $('cycle-start-select');
+    for (let d = 1; d <= 28; d++) {
+      const opt = document.createElement('option');
+      opt.value = String(d);
+      opt.textContent = d === 1 ? 'يوم 1 (الشهر الميلادي)' : `يوم ${fmtMoney.format(d)}`;
+      sel.appendChild(opt);
+    }
+    sel.value = String(Store.getCycleStartDay());
+    sel.addEventListener('change', () => {
+      Store.setCycleStartDay(Number(sel.value));
+      recordCycle = currentCycleKey();
+      statsCycle = currentCycleKey();
+      renderAll();
+      toast('تم تحديث بداية الشهر ✓');
+    });
+  })();
 
   // ===== نافذة المصروف =====
   function renderExpenseChips() {
@@ -314,7 +441,12 @@
     };
     if (editingExpenseId) {
       const i = expenses.findIndex((e) => e.id === editingExpenseId);
-      expenses[i] = { ...expenses[i], ...data };
+      const prev = expenses[i];
+      // التعلّم من التصحيح: إذا غيّر المستخدم فئة عملية لها اسم متجر، نتذكر اختياره
+      if (data.note && data.categoryId !== prev.categoryId) {
+        Store.learnMerchant(SmsParser.normalizeMerchant(data.note), data.categoryId);
+      }
+      expenses[i] = { ...prev, ...data };
       toast('تم تعديل المصروف ✓');
     } else {
       expenses.push({ id: Store.newId(), ...data });
@@ -322,7 +454,7 @@
     }
     Store.setExpenses(expenses);
     closeSheet('expense-sheet');
-    recordMonth = data.date.slice(0, 7);
+    recordCycle = cycleKeyOfISO(data.date);
     renderAll();
   });
 
@@ -446,6 +578,7 @@
 
   function renderAll() {
     renderHome();
+    renderStats();
     renderRecord();
     renderCategories();
   }
@@ -496,7 +629,7 @@
 
     const r = importSmsText(raw);
     if (r.status === 'saved') {
-      recordMonth = r.expense.date.slice(0, 7);
+      recordCycle = cycleKeyOfISO(r.expense.date);
       renderAll();
       const cat = catById(r.expense.categoryId);
       toast(`✓ تم تسجيل ${money(r.expense.amount)}${r.expense.note ? ` من ${r.expense.note}` : ''} في «${cat.name}»`);

@@ -38,6 +38,41 @@
     </div>
   </main>
 
+  <!-- ===== الإحصائيات ===== -->
+  <main id="view-stats" class="view">
+    <header class="page-header">
+      <h1>إحصائيات</h1>
+      <div class="month-switcher">
+        <button class="month-btn" id="stats-prev" aria-label="الشهر السابق">›</button>
+        <span id="stats-month-name" class="month-name"></span>
+        <button class="month-btn" id="stats-next" aria-label="الشهر التالي">‹</button>
+      </div>
+    </header>
+    <div id="stats-content">
+      <div class="donut-wrap">
+        <div id="stats-donut"></div>
+        <div class="donut-center">
+          <span id="donut-total"></span>
+          <small>الإجمالي</small>
+        </div>
+      </div>
+      <div id="stats-breakdown" class="stats-breakdown"></div>
+      <section class="section">
+        <h2 class="section-title">مقارنة آخر 6 أشهر</h2>
+        <div id="stats-bars" class="bars-wrap"></div>
+      </section>
+      <section class="section">
+        <h2 class="section-title">أكثر المتاجر</h2>
+        <div id="stats-merchants" class="merchants-list"></div>
+      </section>
+    </div>
+    <div id="stats-empty" class="empty-state hidden">
+      <div class="empty-icon">📊</div>
+      <p class="empty-title">لا توجد بيانات</p>
+      <p class="empty-text">ما فيه مصاريف في هذا الشهر لعرض إحصائياته</p>
+    </div>
+  </main>
+
   <!-- ===== السجل ===== -->
   <main id="view-record" class="view">
     <header class="page-header">
@@ -69,12 +104,26 @@
     <section class="section auto-entry-section">
       <button class="btn-outline btn-magic" id="btn-sms-help">🪄 الإدخال التلقائي من رسائل البنك</button>
     </section>
+
+    <section class="section settings-section">
+      <h2 class="section-title">الإعدادات</h2>
+      <div class="setting-card">
+        <label class="setting-row" for="cycle-start-select">
+          <span class="setting-label">بداية الشهر</span>
+          <select id="cycle-start-select" class="setting-select"></select>
+        </label>
+        <p class="setting-hint">اختر يوم بداية دورتك الشهرية (مثلاً يوم راتبك). كل الحسابات والإحصائيات تتبع هذي الدورة.</p>
+      </div>
+    </section>
   </main>
 
   <!-- ===== شريط التنقل ===== -->
   <nav class="tabbar">
     <button class="tab active" data-view="home">
       <span class="tab-icon">🏠</span><span class="tab-label">الرئيسية</span>
+    </button>
+    <button class="tab" data-view="stats">
+      <span class="tab-icon">📊</span><span class="tab-label">إحصائيات</span>
     </button>
     <button class="fab" id="btn-add-expense" aria-label="إضافة مصروف">＋</button>
     <button class="tab" data-view="record">
@@ -174,6 +223,7 @@
 
   <script src="js/store.js"></script>
   <script src="js/sms.js"></script>
+  <script src="js/stats.js"></script>
   <script src="js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {

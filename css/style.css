@@ -13,6 +13,8 @@
   --shadow-lift: 0 8px 28px rgba(20, 30, 40, .16);
   --radius: 18px;
   --tabbar-h: 74px;
+  --track: #e9edf1;
+  --bar-dim: #c9d2db;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,6 +29,8 @@
     --border: #29313b;
     --shadow: 0 2px 12px rgba(0, 0, 0, .35);
     --shadow-lift: 0 8px 28px rgba(0, 0, 0, .5);
+    --track: #29313b;
+    --bar-dim: #3a4552;
   }
 }
 
@@ -570,3 +574,140 @@ input[type="date"].field-input { min-height: 48px; }
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(50%) translateY(10px); }
 }
+
+/* ===== الإحصائيات ===== */
+#stats-content.hidden { display: none; }
+
+.donut-wrap {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 8px auto 22px;
+}
+.donut-svg { width: 100%; height: 100%; display: block; }
+.donut-svg circle { transition: stroke-dasharray .5s ease; }
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.donut-center span { font-size: 22px; font-weight: 800; }
+.donut-center small { font-size: 12.5px; color: var(--text-dim); }
+
+.stats-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.breakdown-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+.bd-icon {
+  width: 40px; height: 40px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  font-size: 20px;
+  background: color-mix(in srgb, var(--item-color) 15%, transparent);
+}
+.bd-main { flex: 1; min-width: 0; }
+.bd-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; gap: 8px; }
+.bd-name { font-size: 14.5px; font-weight: 600; }
+.bd-amount { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.bd-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+.bd-bar span { display: block; height: 100%; border-radius: 999px; transition: width .5s ease; }
+.bd-pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+  min-width: 40px;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+.bars-wrap {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 8px 8px;
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+}
+.bars-svg { width: 100%; height: 150px; display: block; }
+.bar-label { fill: var(--text-dim); font-size: 12px; font-weight: 600; }
+
+.merchants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 6px 4px;
+  box-shadow: var(--shadow);
+}
+.merchant-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+}
+.merchant-row + .merchant-row { border-top: 1px solid var(--border); }
+.merchant-rank {
+  width: 26px; height: 26px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 800;
+}
+.merchant-name { flex: 1; font-size: 14.5px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.merchant-amount { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.merchants-empty { color: var(--text-dim); font-size: 13.5px; padding: 10px 12px; }
+
+/* ===== الإعدادات ===== */
+.settings-section { margin-top: 26px; }
+.setting-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 4px 16px 16px;
+  box-shadow: var(--shadow);
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0 12px;
+}
+.setting-label { font-size: 15px; font-weight: 600; }
+.setting-select {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: 12px;
+  padding: 8px 12px;
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: center;
+}
+.setting-hint { font-size: 12.5px; color: var(--text-dim); line-height: 1.7; }

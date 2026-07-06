@@ -4,6 +4,8 @@ const Store = (() => {
   const KEY_CATEGORIES = 'masareefi.categories';
   const KEY_SMS_HASHES = 'masareefi.smsHashes';
   const KEY_RELAY = 'masareefi.relay';
+  const KEY_CYCLE_START = 'masareefi.cycleStartDay';
+  const KEY_LEARNED = 'masareefi.learnedMerchants';
 
   const DEFAULT_CATEGORIES = [
     { id: 'home',   name: 'بيت',      icon: '🏠', color: '#0ea5e9' },
@@ -62,5 +64,33 @@ const Store = (() => {
   function getRelay() { return load(KEY_RELAY, null); }
   function setRelay(relay) { save(KEY_RELAY, relay); }
 
-  return { getCategories, setCategories, getExpenses, setExpenses, newId, hasSmsHash, addSmsHash, getRelay, setRelay };
+  // يوم بداية الدورة الشهرية (1–28) — الافتراضي 1 = الشهر الميلادي
+  function getCycleStartDay() {
+    const d = Number(load(KEY_CYCLE_START, 1));
+    return Number.isInteger(d) && d >= 1 && d <= 28 ? d : 1;
+  }
+  function setCycleStartDay(day) {
+    save(KEY_CYCLE_START, Math.min(28, Math.max(1, Math.round(day))));
+  }
+
+  // خريطة التعلّم: اسم متجر مُطبّع → معرّف الفئة
+  function getLearnedMerchants() { return load(KEY_LEARNED, {}); }
+  function learnMerchant(normname, categoryId) {
+    if (!normname) return;
+    const map = load(KEY_LEARNED, {});
+    map[normname] = categoryId;
+    save(KEY_LEARNED, map);
+  }
+  function forgetMerchant(normname) {
+    const map = load(KEY_LEARNED, {});
+    delete map[normname];
+    save(KEY_LEARNED, map);
+  }
+
+  return {
+    getCategories, setCategories, getExpenses, setExpenses, newId,
+    hasSmsHash, addSmsHash, getRelay, setRelay,
+    getCycleStartDay, setCycleStartDay,
+    getLearnedMerchants, learnMerchant, forgetMerchant,
+  };
 })();

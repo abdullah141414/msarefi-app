@@ -46,14 +46,14 @@ const SmsParser = (() => {
     /(\d{1,2})[\/-](\d{1,2})[\/-](\d{2})(?!\d)/,      // 04/07/26 أو 5-7-26 (يوم-شهر-سنة)
   ];
 
-  // كلمات مفتاحية ← معرّف الفئة الافتراضية
+  // كلمات مفتاحية ← معرّف الفئة الافتراضية (قاموس متاجر سعودي موسّع)
   const CATEGORY_KEYWORDS = [
-    { id: 'car',    words: ['بنزين', 'محطة', 'وقود', 'بترول', 'petromin', 'sasco', 'naft', 'aldrees', 'الدريس', 'ساسكو', 'نفط', 'غيار', 'إطارات', 'اطارات', 'car wash', 'مغسلة سيارات', 'قطع غيار'] },
-    { id: 'food',   words: ['مطعم', 'كافيه', 'كوفي', 'قهوة', 'بوفيه', 'بقالة', 'تموينات', 'سوبرماركت', 'هايبر', 'أسواق', 'اسواق', 'مخبز', 'حلويات', 'شاورما', 'بروست', 'مندي', 'restaurant', 'cafe', 'coffee', 'starbucks', 'mcdonald', 'kfc', 'herfy', 'هرفي', 'البيك', 'albaik', 'دانكن', 'dunkin', 'كودو', 'kudu', 'panda', 'بنده', 'تميمي', 'tamimi', 'العثيم', 'othaim', 'الدانوب', 'danube', 'لولو', 'lulu', 'كارفور', 'carrefour', 'hungerstation', 'هنقرستيشن', 'jahez', 'جاهز', 'مرسول', 'toyou', 'كيتا', 'keeta', 'ninja', 'نينجا'] },
-    { id: 'health', words: ['صيدلية', 'صيدليه', 'مستشفى', 'مستوصف', 'عيادة', 'عيادات', 'مختبر', 'طبي', 'النهدي', 'nahdi', 'الدواء', 'dawaa', 'pharmacy', 'clinic', 'hospital', 'lab'] },
-    { id: 'home',   words: ['كهرباء', 'مياه', 'ماء', 'غاز', 'إيجار', 'ايجار', 'عقار', 'أثاث', 'اثاث', 'ikea', 'ايكيا', 'ساكو', 'saco', 'electricity', 'water', 'سباكة', 'صيانة منزل', 'مكيف'] },
-    { id: 'phone',  words: ['stc', 'موبايلي', 'mobily', 'زين', 'zain', 'سلام', 'salam', 'انترنت', 'إنترنت', 'اتصالات', 'شحن رصيد', 'sawa', 'سوا'] },
-    { id: 'shop',   words: ['أمازون', 'امازون', 'amazon', 'نون', 'noon', 'شي إن', 'شي ان', 'shein', 'زارا', 'zara', 'ملابس', 'أحذية', 'احذية', 'عطور', 'مول', 'mall', 'مكتبة جرير', 'جرير', 'jarir', 'اكسترا', 'extra', 'العروض', 'متجر'] },
+    { id: 'car',    words: ['بنزين', 'محطة', 'وقود', 'بترول', 'petromin', 'sasco', 'naft', 'aldrees', 'الدريس', 'ساسكو', 'نفط', 'بترومين', 'ساسكو', 'اراك', 'arak', 'كايان', 'kayan', 'وقودي', 'غيار', 'إطارات', 'اطارات', 'car wash', 'مغسلة', 'قطع غيار', 'كماليات', 'ورشة', 'تأمين سيارة', 'نجم', 'najm', 'ساهر', 'موقف', 'parking', 'تشليح', 'زيت', 'اويل', ' صبغ سيارة'] },
+    { id: 'food',   words: ['مطعم', 'مطاعم', 'كافيه', 'كوفي', 'قهوة', 'بوفيه', 'بقالة', 'تموينات', 'سوبر ماركت', 'سوبرماركت', 'هايبر', 'أسواق', 'اسواق', 'مخبز', 'مخبوزات', 'حلويات', 'شاورما', 'بروست', 'مندي', 'مشويات', 'برجر', 'burger', 'pizza', 'بيتزا', 'restaurant', 'cafe', 'coffee', 'bakery', 'sweets', 'starbucks', 'ستاربكس', 'mcdonald', 'ماكدونالدز', 'kfc', 'كنتاكي', 'hardee', 'هارديز', 'herfy', 'هرفي', 'البيك', 'albaik', 'دانكن', 'dunkin', 'كودو', 'kudu', 'شيك شاك', 'shake shack', 'الرومانسية', 'الطازج', 'دجاج', 'بيك', 'subway', 'صب واي', 'دومينوز', 'domino', 'papa john', 'باسكن', 'baskin', 'كريسبي', 'krispy', 'تكا', 'برجر كنق', 'burger king', 'panda', 'بنده', 'تميمي', 'tamimi', 'العثيم', 'othaim', 'الدانوب', 'danube', 'لولو', 'lulu', 'كارفور', 'carrefour', 'نستو', 'nesto', 'بن داود', 'bindawood', 'المزرعة', 'كبريت', 'هنقرستيشن', 'hungerstation', 'jahez', 'جاهز', 'مرسول', 'mrsool', 'toyou', 'تويو', 'كيتا', 'keeta', 'ninja', 'نينجا', 'the chefz', 'شيفز', 'ubereats', 'careem now', 'عصير', 'juice', 'مياه', 'ماء صحي'] },
+    { id: 'health', words: ['صيدلية', 'صيدليه', 'مستشفى', 'مستوصف', 'عيادة', 'عيادات', 'مجمع طبي', 'مختبر', 'طبي', 'اسنان', 'أسنان', 'نظارات', 'بصريات', 'النهدي', 'nahdi', 'الدواء', 'dawaa', 'whites', 'وايتس', 'صيدليات', 'pharmacy', 'clinic', 'hospital', 'medical', 'lab', 'مغربي', 'magrabi', 'بوبا', 'bupa', 'تداوي', 'حكيم', 'مختبرات', 'اشعة'] },
+    { id: 'home',   words: ['كهرباء', 'المياه', 'الماء', 'غاز', 'إيجار', 'ايجار', 'عقار', 'أثاث', 'اثاث', 'ikea', 'ايكيا', 'ساكو', 'saco', 'homebox', 'هوم بوكس', 'home centre', 'هوم سنتر', 'دبليو', 'west elm', 'ارابيسك', 'electricity', 'water', 'gas', 'سباكة', 'كهربائي', 'صيانة', 'مكيف', 'تكييف', 'ادوات منزلية', 'مفروشات', 'ستائر', 'نجارة', 'دهانات', 'جبس', 'بلاط', 'عمالة', 'خادمة', 'مصبغة', 'غسيل'] },
+    { id: 'phone',  words: ['stc', 'اس تي سي', 'موبايلي', 'mobily', 'زين', 'zain', 'سلام', 'salam', 'انترنت', 'إنترنت', 'اتصالات', 'شحن رصيد', 'sawa', 'سوا', 'باقة', 'فوري', 'quickpay', 'جوي', 'jawwy', 'redbull mobile', 'ابل', 'apple.com', 'google', 'جوجل', 'netflix', 'نتفلكس', 'shahid', 'شاهد', 'osn', 'يوتيوب', 'youtube', 'spotify', 'اشتراك'] },
+    { id: 'shop',   words: ['أمازون', 'امازون', 'amazon', 'نون', 'noon', 'شي إن', 'شي ان', 'shein', 'زارا', 'zara', 'اتش اند ام', 'h&m', 'ملابس', 'أحذية', 'احذية', 'عطور', 'عطر', 'مول', 'mall', 'مكتبة جرير', 'جرير', 'jarir', 'اكسترا', 'extra', 'العروض', 'متجر', 'ماركة', 'سنتربوينت', 'centrepoint', 'ماكس', ' max ', 'namshi', 'نمشي', 'ازياء', 'اكسسوارات', 'ساعات', 'مجوهرات', 'ذهب', 'لعب', 'العاب', 'toys', 'هدايا', 'ورد', 'زهور', 'باث', 'bath', 'the body shop', 'sephora', 'سيفورا', 'نايس', 'ريد تاغ', 'redtag', 'sc store', 'حلاق', 'صالون', 'حلاقة', 'باربر', 'barber', 'تجميل'] },
   ];
 
   function parseAmount(text) {
@@ -125,8 +125,29 @@ const SmsParser = (() => {
     return { ok: true, amount, merchant, date };
   }
 
-  // تخمين الفئة من المتجر ونص الرسالة — يرجع معرف فئة موجودة أو 'other'
+  // تطبيع اسم المتجر لمطابقة ثابتة (يزيل رموز/أرقام الفرع والبطاقة)
+  function normalizeMerchant(name) {
+    return String(name || '')
+      .toLowerCase()
+      .replace(/[*#_]/g, ' ')
+      .replace(/[-–]/g, ' ')
+      .replace(/\b[a-z]?\d[\d]*\b/g, ' ')   // إزالة أرقام الفرع/الرمز
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // تخمين الفئة: التعلّم من تصحيحات المستخدم أولاً، ثم القاموس، ثم «أخرى»
   function guessCategory(merchant, text, categories) {
+    // 1) خريطة التعلّم تطغى على كل شيء
+    try {
+      const learned = (typeof Store !== 'undefined' && Store.getLearnedMerchants) ? Store.getLearnedMerchants() : {};
+      const norm = normalizeMerchant(merchant);
+      if (norm && learned[norm] && categories.some((c) => c.id === learned[norm])) {
+        return learned[norm];
+      }
+    } catch { /* تجاهل */ }
+
+    // 2) قاموس الكلمات المفتاحية
     const haystack = `${merchant} ${text}`.toLowerCase();
     for (const group of CATEGORY_KEYWORDS) {
       if (!categories.some((c) => c.id === group.id)) continue;
@@ -145,5 +166,5 @@ const SmsParser = (() => {
     return 'h' + (h >>> 0).toString(36);
   }
 
-  return { parse, guessCategory, fingerprint };
+  return { parse, guessCategory, fingerprint, normalizeMerchant };
 })();
