@@ -8,8 +8,11 @@
   let editingExpenseId = null;
   let editingCategoryId = null;
   let selectedCategoryId = null;              // داخل نافذة المصروف
+  let selectedKind = 'expense';               // مصروف أو دخل
   let selectedIcon = null;
   let selectedColor = null;
+  let recurringCategoryId = null;             // داخل نافذة المتكررة
+  let recordQuery = '';                       // نص البحث في السجل
 
   const CATEGORY_ICONS = ['🏠','🚗','🍽️','🛍️','💊','📱','👕','🎓','✈️','⚽','🎮','☕','⛽','🧾','🎁','💇','🐈','🕌','💼','📦'];
   const CATEGORY_COLORS = ['#0ea5e9','#f59e0b','#ef4444','#a855f7','#10b981','#6366f1','#ec4899','#f97316','#14b8a6','#64748b'];
@@ -78,6 +81,20 @@
   }
 
   function sum(list) { return list.reduce((t, e) => t + e.amount, 0); }
+
+  // فصل المصاريف عن الدخل
+  function isIncome(e) { return e.kind === 'income'; }
+  function onlyExpenses(list) { return list.filter((e) => !isIncome(e)); }
+  function onlyIncome(list) { return list.filter(isIncome); }
+
+  // تحويل نص مبلغ (يقبل الأرقام العربية) إلى رقم أو NaN
+  function parseAmountInput(str) {
+    const raw = String(str || '')
+      .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+      .replace(/٫/g, '.')
+      .replace(/,/g, '.');
+    return parseFloat(raw);
+  }
 
   recordCycle = currentCycleKey();
   statsCycle = currentCycleKey();
@@ -201,49 +218,84 @@
   // ===== الرئيسية =====
   function renderHome() {
     const key = currentCycleKey();
-    const cycleExpenses = expensesOfCycle(key);
+    const all = expensesOfCycle(key);
+    const spendList = onlyExpenses(all);
+    const incomeList = onlyIncome(all);
+    const spendTotal = sum(spendList);
+    const incomeTotal = sum(incomeList);
+
     $('home-month-name').textContent = cycleLabel(key);
-    $('home-total').textContent = money(sum(cycleExpenses));
-    $('home-count').textContent = cycleExpenses.length
-      ? `${fmtMoney.format(cycleExpenses.length)} ${cycleExpenses.length === 1 ? 'مصروف' : 'مصاريف'} هذا الشهر`
+    $('home-total').textContent = money(spendTotal);
+    $('home-count').textContent = spendList.length
+      ? `${fmtMoney.format(spendList.length)} ${spendList.length === 1 ? 'مصروف' : 'مصاريف'} هذا الشهر`
       : 'ما سجّلت شي هذا الشهر بعد';
+
+    // الدخل والصافي (يظهر فقط إذا فيه دخل مسجّل)
+    const hasIncome = incomeList.length > 0;
+    $('home-net').classList.toggle('hidden', !hasIncome);
+    if (hasIncome) {
+      $('home-income').textContent = money(incomeTotal);
+      const net = incomeTotal - spendTotal;
+      const netEl = $('home-netval');
+      netEl.textContent = money(net);
+      netEl.classList.toggle('net-negative', net < 0);
+    }
 
     const grid = $('home-categories');
     grid.innerHTML = '';
-    const hasAny = expenses.length > 0;
-    $('home-empty').classList.toggle('hidden', hasAny);
+    $('home-empty').classList.toggle('hidden', expenses.length > 0);
 
+    const budgets = Store.getBudgets();
     categories.forEach((cat) => {
-      const total = sum(cycleExpenses.filter((e) => e.categoryId === cat.id));
+      const total = sum(spendList.filter((e) => e.categoryId === cat.id));
+      const budget = budgets[cat.id];
       const card = document.createElement('button');
       card.className = 'category-card';
       card.style.setProperty('--cat-color', cat.color);
+      let budgetHtml = '';
+      if (budget) {
+        const pct = Math.min(100, (total / budget) * 100);
+        const over = total > budget;
+        budgetHtml = `
+          <span class="cat-budget-bar"><span style="width:${pct}%;${over ? 'background:var(--danger)' : ''}"></span></span>
+          <span class="cat-budget-text${over ? ' over' : ''}">${over ? 'تجاوزت' : 'من'} ${money(budget)}</span>`;
+      }
       card.innerHTML = `
         <span class="cat-icon">${cat.icon}</span>
         <span class="cat-name">${escapeHtml(cat.name)}</span>
-        <span class="cat-total">${money(total)}</span>`;
+        <span class="cat-total">${money(total)}</span>
+        ${budgetHtml}`;
       card.addEventListener('click', () => openExpenseSheet(null, cat.id));
       grid.appendChild(card);
     });
   }
 
   // ===== السجل =====
+  function matchesQuery(e) {
+    if (!recordQuery) return true;
+    const q = recordQuery;
+    const cat = e.categoryId ? catById(e.categoryId).name : 'دخل';
+    return (e.note || '').toLowerCase().includes(q) || cat.toLowerCase().includes(q);
+  }
+
   function renderRecord() {
     $('record-month-name').textContent = cycleLabel(recordCycle);
 
-    const cycleExpenses = expensesOfCycle(recordCycle)
+    const cycleItems = expensesOfCycle(recordCycle)
+      .filter(matchesQuery)
       .slice()
       .sort((a, b) => b.date.localeCompare(a.date));
 
-    $('record-total').textContent = cycleExpenses.length ? `الإجمالي: ${money(sum(cycleExpenses))}` : '';
-    $('record-empty').classList.toggle('hidden', cycleExpenses.length > 0);
+    const spendTotal = sum(onlyExpenses(cycleItems));
+    $('record-total').textContent = cycleItems.length ? `المصاريف: ${money(spendTotal)}` : '';
+    $('record-empty').classList.toggle('hidden', cycleItems.length > 0);
 
     const list = $('record-list');
     list.innerHTML = '';
 
     // تجميع حسب اليوم
     const byDay = new Map();
-    cycleExpenses.forEach((e) => {
+    cycleItems.forEach((e) => {
       if (!byDay.has(e.date)) byDay.set(e.date, []);
       byDay.get(e.date).push(e);
     });
@@ -260,17 +312,28 @@
       const wrap = document.createElement('div');
       wrap.className = 'day-items';
       items.forEach((e) => {
-        const cat = catById(e.categoryId);
+        const income = isIncome(e);
         const row = document.createElement('button');
-        row.className = 'expense-item';
-        row.style.setProperty('--item-color', cat.color);
-        row.innerHTML = `
-          <span class="expense-icon">${cat.icon}</span>
-          <span class="expense-info">
-            <span class="expense-cat">${escapeHtml(cat.name)}</span>
-            ${e.note ? `<span class="expense-note">${escapeHtml(e.note)}</span>` : ''}
-          </span>
-          <span class="expense-amount">${money(e.amount)}</span>`;
+        row.className = 'expense-item' + (income ? ' income-item' : '');
+        if (income) {
+          row.innerHTML = `
+            <span class="expense-icon income-icon">＋</span>
+            <span class="expense-info">
+              <span class="expense-cat">دخل</span>
+              ${e.note ? `<span class="expense-note">${escapeHtml(e.note)}</span>` : ''}
+            </span>
+            <span class="expense-amount income-amount">+${money(e.amount)}</span>`;
+        } else {
+          const cat = catById(e.categoryId);
+          row.style.setProperty('--item-color', cat.color);
+          row.innerHTML = `
+            <span class="expense-icon">${cat.icon}</span>
+            <span class="expense-info">
+              <span class="expense-cat">${escapeHtml(cat.name)}</span>
+              ${e.note ? `<span class="expense-note">${escapeHtml(e.note)}</span>` : ''}
+            </span>
+            <span class="expense-amount">${money(e.amount)}</span>`;
+        }
         row.addEventListener('click', () => openExpenseSheet(e.id));
         wrap.appendChild(row);
       });
@@ -287,11 +350,15 @@
     recordCycle = shiftCycle(recordCycle, 1);
     renderRecord();
   });
+  $('record-search').addEventListener('input', (ev) => {
+    recordQuery = ev.target.value.trim().toLowerCase();
+    renderRecord();
+  });
 
   // ===== الإحصائيات =====
   function renderStats() {
     $('stats-month-name').textContent = cycleLabel(statsCycle);
-    const cycleExpenses = expensesOfCycle(statsCycle);
+    const cycleExpenses = onlyExpenses(expensesOfCycle(statsCycle));
     const total = sum(cycleExpenses);
 
     const hasData = cycleExpenses.length > 0;
@@ -330,7 +397,7 @@
       const { start } = cycleBounds(k);
       series.unshift({
         label: fmtMonthShort.format(start),
-        total: sum(expensesOfCycle(k)),
+        total: sum(onlyExpenses(expensesOfCycle(k))),
         current: k === statsCycle,
       });
       k = shiftCycle(k, -1);
@@ -402,11 +469,28 @@
     });
   }
 
+  // تبديل نوع العملية (مصروف / دخل)
+  function setKind(kind) {
+    selectedKind = kind;
+    document.querySelectorAll('#kind-toggle .kind-btn').forEach((b) =>
+      b.classList.toggle('active', b.dataset.kind === kind));
+    const income = kind === 'income';
+    $('expense-cat-label').classList.toggle('hidden', income);
+    $('expense-categories').classList.toggle('hidden', income);
+    $('expense-note').placeholder = income ? 'مثال: راتب، مكافأة' : 'مثال: فاتورة الكهرباء';
+  }
+  document.querySelectorAll('#kind-toggle .kind-btn').forEach((b) =>
+    b.addEventListener('click', () => setKind(b.dataset.kind)));
+
   function openExpenseSheet(expenseId = null, presetCategoryId = null) {
     editingExpenseId = expenseId;
     const expense = expenseId ? expenses.find((e) => e.id === expenseId) : null;
 
-    $('expense-sheet-title').textContent = expense ? 'تعديل المصروف' : 'إضافة مصروف';
+    const income = expense ? isIncome(expense) : false;
+    setKind(income ? 'income' : 'expense');
+    $('expense-sheet-title').textContent = expense
+      ? (income ? 'تعديل الدخل' : 'تعديل المصروف')
+      : 'إضافة عملية';
     $('expense-amount').value = expense ? String(expense.amount) : '';
     $('expense-date').value = expense ? expense.date : todayISO();
     $('expense-note').value = expense ? (expense.note || '') : '';
@@ -422,20 +506,17 @@
 
   $('expense-form').addEventListener('submit', (ev) => {
     ev.preventDefault();
-    // يقبل الأرقام العربية ٠-٩ ويحولها
-    const raw = $('expense-amount').value
-      .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
-      .replace(/٫/g, '.')
-      .replace(/,/g, '.');
-    const amount = parseFloat(raw);
+    const amount = parseAmountInput($('expense-amount').value);
     if (!isFinite(amount) || amount <= 0) {
       toast('أدخل مبلغ صحيح');
       $('expense-amount').focus();
       return;
     }
+    const income = selectedKind === 'income';
     const data = {
       amount: Math.round(amount * 100) / 100,
-      categoryId: selectedCategoryId,
+      kind: selectedKind,
+      categoryId: income ? null : selectedCategoryId,
       date: $('expense-date').value || todayISO(),
       note: $('expense-note').value.trim(),
     };
@@ -443,14 +524,14 @@
       const i = expenses.findIndex((e) => e.id === editingExpenseId);
       const prev = expenses[i];
       // التعلّم من التصحيح: إذا غيّر المستخدم فئة عملية لها اسم متجر، نتذكر اختياره
-      if (data.note && data.categoryId !== prev.categoryId) {
+      if (!income && data.note && data.categoryId !== prev.categoryId) {
         Store.learnMerchant(SmsParser.normalizeMerchant(data.note), data.categoryId);
       }
       expenses[i] = { ...prev, ...data };
-      toast('تم تعديل المصروف ✓');
+      toast(income ? 'تم تعديل الدخل ✓' : 'تم تعديل المصروف ✓');
     } else {
       expenses.push({ id: Store.newId(), ...data });
-      toast('تم حفظ المصروف ✓');
+      toast(income ? 'تم حفظ الدخل ✓' : 'تم حفظ المصروف ✓');
     }
     Store.setExpenses(expenses);
     closeSheet('expense-sheet');
@@ -522,6 +603,8 @@
     $('category-name').value = cat ? cat.name : '';
     selectedIcon = cat ? cat.icon : CATEGORY_ICONS[0];
     selectedColor = cat ? cat.color : CATEGORY_COLORS[0];
+    const budget = cat ? Store.getBudgets()[cat.id] : null;
+    $('category-budget').value = budget ? String(budget) : '';
     // فئة «أخرى» ما تنحذف لأنها الوجهة الاحتياطية
     $('category-delete').classList.toggle('hidden', !cat || cat.id === 'other');
 
@@ -537,16 +620,22 @@
     const name = $('category-name').value.trim();
     if (!name) return;
 
+    let targetId;
     if (editingCategoryId) {
       const cat = categories.find((c) => c.id === editingCategoryId);
       cat.name = name;
       cat.icon = selectedIcon;
       cat.color = selectedColor;
+      targetId = cat.id;
       toast('تم تعديل الفئة ✓');
     } else {
-      categories.push({ id: Store.newId(), name, icon: selectedIcon, color: selectedColor });
+      targetId = Store.newId();
+      categories.push({ id: targetId, name, icon: selectedIcon, color: selectedColor });
       toast('تمت إضافة الفئة ✓');
     }
+    // الميزانية
+    const budgetVal = parseAmountInput($('category-budget').value);
+    Store.setBudget(targetId, isFinite(budgetVal) && budgetVal > 0 ? Math.round(budgetVal * 100) / 100 : 0);
     Store.setCategories(categories);
     closeSheet('category-sheet');
     renderAll();
@@ -686,6 +775,244 @@
     if (document.visibilityState === 'visible') syncRelay();
   });
 
+  // ===== النسخ الاحتياطي (تصدير/استيراد) =====
+  $('btn-export').addEventListener('click', () => {
+    const data = JSON.stringify(Store.exportAll(), null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = todayISO();
+    a.href = url;
+    a.download = `مصاريفي-نسخة-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('تم تصدير نسختك الاحتياطية ✓');
+  });
+
+  $('btn-import').addEventListener('click', () => $('import-file').click());
+  $('import-file').addEventListener('change', (ev) => {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let obj;
+      try { obj = JSON.parse(reader.result); }
+      catch { toast('الملف غير صالح'); return; }
+      askConfirm('استيراد هذي النسخة بيستبدل كل بياناتك الحالية. متأكد؟', () => {
+        if (Store.importAll(obj)) {
+          categories = Store.getCategories();
+          expenses = Store.getExpenses();
+          recordCycle = currentCycleKey();
+          statsCycle = currentCycleKey();
+          $('cycle-start-select').value = String(Store.getCycleStartDay());
+          closeSheet('smshelp-sheet');
+          renderAll();
+          toast('تم استيراد نسختك ✓');
+        } else {
+          toast('الملف مو نسخة مصاريفي صحيحة');
+        }
+      });
+    };
+    reader.readAsText(file);
+    ev.target.value = '';
+  });
+
+  // ===== المتاجر المحفوظة (التعلّم) =====
+  $('learned-backdrop').addEventListener('click', () => closeSheet('learned-sheet'));
+  function renderLearned() {
+    const map = Store.getLearnedMerchants();
+    const names = Object.keys(map);
+    const list = $('learned-list');
+    list.innerHTML = '';
+    if (!names.length) {
+      list.innerHTML = '<p class="merchants-empty">ما فيه متاجر محفوظة بعد. غيّر فئة أي عملية جاية من متجر وبيتعلّمها.</p>';
+      return;
+    }
+    names.forEach((name) => {
+      const cat = catById(map[name]);
+      const row = document.createElement('div');
+      row.className = 'learned-row';
+      row.innerHTML = `
+        <span class="learned-name">${escapeHtml(name)}</span>
+        <span class="learned-cat" style="--item-color:${cat.color}">${cat.icon} ${escapeHtml(cat.name)}</span>
+        <button class="learned-del" aria-label="حذف">✕</button>`;
+      row.querySelector('.learned-del').addEventListener('click', () => {
+        Store.forgetMerchant(name);
+        renderLearned();
+        toast('تم حذف القاعدة');
+      });
+      list.appendChild(row);
+    });
+  }
+  $('btn-learned').addEventListener('click', () => { renderLearned(); openSheet('learned-sheet'); });
+
+  // ===== المصاريف المتكررة =====
+  $('recurring-backdrop').addEventListener('click', () => closeSheet('recurring-sheet'));
+
+  function renderRecurringChips() {
+    const row = $('recurring-categories');
+    row.innerHTML = '';
+    categories.forEach((cat) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip' + (cat.id === recurringCategoryId ? ' selected' : '');
+      chip.style.setProperty('--chip-color', cat.color);
+      chip.innerHTML = `${cat.icon} ${escapeHtml(cat.name)}`;
+      chip.addEventListener('click', () => { recurringCategoryId = cat.id; renderRecurringChips(); });
+      row.appendChild(chip);
+    });
+  }
+
+  function renderRecurringList() {
+    const list = $('recurring-list');
+    const items = Store.getRecurring();
+    list.innerHTML = '';
+    if (!items.length) {
+      list.innerHTML = '<p class="merchants-empty">ما فيه مصاريف متكررة بعد.</p>';
+      return;
+    }
+    items.forEach((r) => {
+      const cat = catById(r.categoryId);
+      const row = document.createElement('div');
+      row.className = 'learned-row';
+      row.innerHTML = `
+        <span class="learned-cat" style="--item-color:${cat.color}">${cat.icon}</span>
+        <span class="recurring-info">
+          <b>${escapeHtml(r.note || cat.name)}</b>
+          <small>${money(r.amount)} · يوم ${fmtMoney.format(r.dayOfMonth)}</small>
+        </span>
+        <button class="learned-del" aria-label="حذف">✕</button>`;
+      row.querySelector('.learned-del').addEventListener('click', () => {
+        Store.setRecurring(Store.getRecurring().filter((x) => x.id !== r.id));
+        renderRecurringList();
+        toast('تم الحذف');
+      });
+      list.appendChild(row);
+    });
+  }
+
+  function openRecurringSheet() {
+    recurringCategoryId = categories[0].id;
+    $('recurring-amount').value = '';
+    $('recurring-note').value = '';
+    const daySel = $('recurring-day');
+    if (!daySel.options.length) {
+      for (let d = 1; d <= 28; d++) {
+        const opt = document.createElement('option');
+        opt.value = String(d);
+        opt.textContent = `يوم ${fmtMoney.format(d)}`;
+        daySel.appendChild(opt);
+      }
+    }
+    daySel.value = '1';
+    renderRecurringChips();
+    renderRecurringList();
+    openSheet('recurring-sheet');
+  }
+  $('btn-recurring').addEventListener('click', openRecurringSheet);
+
+  $('recurring-form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const amount = parseAmountInput($('recurring-amount').value);
+    if (!isFinite(amount) || amount <= 0) { toast('أدخل مبلغ صحيح'); return; }
+    const item = {
+      id: Store.newId(),
+      amount: Math.round(amount * 100) / 100,
+      categoryId: recurringCategoryId,
+      note: $('recurring-note').value.trim(),
+      dayOfMonth: Number($('recurring-day').value),
+      since: currentCycleKey(),   // يبدأ من الدورة الحالية — لا يعبّي الماضي
+    };
+    const list = Store.getRecurring();
+    list.push(item);
+    Store.setRecurring(list);
+    generateRecurring();
+    $('recurring-amount').value = '';
+    $('recurring-note').value = '';
+    renderRecurringList();
+    renderAll();
+    toast('تمت إضافة المصروف المتكرر ✓');
+  });
+
+  // يولّد المصاريف المتكررة المستحقة للدورات الماضية والحالية (يتجنب التكرار)
+  function generateRecurring() {
+    const templates = Store.getRecurring();
+    if (!templates.length) return;
+    const done = Store.getRecurringDone();
+    const doneSet = new Set(done);
+    let added = false;
+
+    templates.forEach((t) => {
+      // لا نعبّي الماضي: نبدأ من دورة الإنشاء (أو الحالية للقوالب القديمة)
+      const floor = t.since || currentCycleKey();
+      // نمر على آخر 12 دورة حتى الحالية (كحد أقصى للتعويض عند غياب الاستخدام)
+      let k = currentCycleKey();
+      const cycles = [];
+      for (let i = 0; i < 12; i++) { cycles.push(k); k = shiftCycle(k, -1); }
+      cycles.forEach((cycleK) => {
+        if (cycleK < floor) return;
+        const marker = `${t.id}@${cycleK}`;
+        if (doneSet.has(marker)) return;
+        // تاريخ الاستحقاق داخل هذي الدورة
+        const { start, next } = cycleBounds(cycleK);
+        const due = new Date(start.getFullYear(), start.getMonth(), t.dayOfMonth);
+        if (due < start) due.setMonth(due.getMonth() + 1); // اليوم قبل بداية الدورة → الشهر التالي
+        // لا نولّد لتواريخ مستقبلية
+        if (due >= next || due > new Date()) return;
+        expenses.push({
+          id: Store.newId(),
+          amount: t.amount,
+          kind: 'expense',
+          categoryId: t.categoryId,
+          date: isoOf(due),
+          note: t.note || catById(t.categoryId).name,
+          recurring: true,
+        });
+        doneSet.add(marker);
+        added = true;
+      });
+    });
+
+    if (added) {
+      Store.setExpenses(expenses);
+      Store.markRecurringDone([...doneSet]);
+    }
+  }
+
+  // ===== تحديث التطبيق (عامل الخدمة) =====
+  function setupUpdatePrompt(reg) {
+    if (!reg) return;
+    function watch(worker) {
+      if (!worker) return;
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+          $('update-banner').classList.remove('hidden');
+        }
+      });
+    }
+    if (reg.waiting && navigator.serviceWorker.controller) {
+      $('update-banner').classList.remove('hidden');
+    }
+    reg.addEventListener('updatefound', () => watch(reg.installing));
+    $('update-now').addEventListener('click', () => {
+      const w = reg.waiting || reg.installing;
+      if (w) w.postMessage({ type: 'SKIP_WAITING' });
+      $('update-banner').classList.add('hidden');
+    });
+  }
+  // نعيد التحميل فقط عند تفعيل تحديث (مو عند أول تثبيت)
+  const hadController = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+  let refreshing = false;
+  navigator.serviceWorker && navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing || !hadController) return;
+    refreshing = true;
+    window.location.reload();
+  });
+  window.__setupUpdatePrompt = setupUpdatePrompt;
+
+  generateRecurring();
   renderAll();
   handleSmsFromUrl();
   syncRelay();

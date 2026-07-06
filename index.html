@@ -26,6 +26,10 @@
       <p class="hero-label">مصاريف <span id="home-month-name"></span></p>
       <h1 class="hero-total" id="home-total">0 ر.س</h1>
       <p class="hero-sub" id="home-count"></p>
+      <div class="hero-net hidden" id="home-net">
+        <span class="net-item"><small>الدخل</small><b id="home-income">0</b></span>
+        <span class="net-item"><small>الصافي</small><b id="home-netval">0</b></span>
+      </div>
     </header>
     <section class="section">
       <h2 class="section-title">الفئات</h2>
@@ -83,6 +87,9 @@
         <button class="month-btn" id="month-next" aria-label="الشهر التالي">‹</button>
       </div>
       <p class="month-total" id="record-total"></p>
+      <div class="search-wrap">
+        <input type="search" id="record-search" class="search-input" placeholder="🔍 ابحث باسم المتجر أو الفئة" autocomplete="off">
+      </div>
     </header>
     <div id="record-list" class="record-list"></div>
     <div id="record-empty" class="empty-state hidden">
@@ -114,6 +121,19 @@
         </label>
         <p class="setting-hint">اختر يوم بداية دورتك الشهرية (مثلاً يوم راتبك). كل الحسابات والإحصائيات تتبع هذي الدورة.</p>
       </div>
+
+      <button class="btn-outline settings-btn" id="btn-recurring">🔁 المصاريف المتكررة</button>
+      <button class="btn-outline settings-btn" id="btn-learned">🧠 المتاجر المحفوظة</button>
+
+      <div class="setting-card backup-card">
+        <p class="setting-label">نسخة احتياطية</p>
+        <p class="setting-hint">صدّر كل بياناتك كملف واحفظه عندك (الملفات أو آيكلاود)، أو استورد نسخة سابقة. بياناتك تبقى على جهازك.</p>
+        <div class="backup-actions">
+          <button class="btn-outline" id="btn-export">⬇️ تصدير</button>
+          <button class="btn-outline" id="btn-import">⬆️ استيراد</button>
+        </div>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </div>
     </section>
   </main>
 
@@ -140,11 +160,15 @@
     <div class="sheet-handle"></div>
     <h2 class="sheet-title" id="expense-sheet-title">إضافة مصروف</h2>
     <form id="expense-form">
+      <div class="kind-toggle" id="kind-toggle">
+        <button type="button" class="kind-btn active" data-kind="expense">مصروف</button>
+        <button type="button" class="kind-btn" data-kind="income">دخل</button>
+      </div>
       <div class="amount-wrap">
         <input type="text" inputmode="decimal" id="expense-amount" class="amount-input" placeholder="0" autocomplete="off" required>
         <span class="amount-currency">ر.س</span>
       </div>
-      <label class="field-label">الفئة</label>
+      <label class="field-label" id="expense-cat-label">الفئة</label>
       <div id="expense-categories" class="chip-row"></div>
       <label class="field-label" for="expense-date">التاريخ</label>
       <input type="date" id="expense-date" class="field-input" required>
@@ -169,6 +193,11 @@
       <div id="category-icons" class="picker-row"></div>
       <label class="field-label">اللون</label>
       <div id="category-colors" class="picker-row"></div>
+      <label class="field-label" for="category-budget">ميزانية شهرية <small>(اختياري)</small></label>
+      <div class="amount-wrap amount-wrap-sm">
+        <input type="text" inputmode="decimal" id="category-budget" class="amount-input amount-input-sm" placeholder="بدون حد" autocomplete="off">
+        <span class="amount-currency">ر.س</span>
+      </div>
       <div class="sheet-actions">
         <button type="submit" class="btn-primary">حفظ</button>
         <button type="button" class="btn-danger hidden" id="category-delete">حذف</button>
@@ -209,6 +238,42 @@
     </div>
   </div>
 
+  <!-- ===== نافذة المصاريف المتكررة ===== -->
+  <div class="sheet-backdrop hidden" id="recurring-backdrop"></div>
+  <div class="sheet hidden" id="recurring-sheet" role="dialog" aria-modal="true">
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title">🔁 المصاريف المتكررة</h2>
+    <p class="setting-hint">تنضاف تلقائياً كل شهر في يومها (مثل الإيجار والاشتراكات).</p>
+    <div id="recurring-list" class="recurring-list"></div>
+    <form id="recurring-form" class="recurring-form">
+      <label class="field-label">مصروف متكرر جديد</label>
+      <div class="amount-wrap amount-wrap-sm">
+        <input type="text" inputmode="decimal" id="recurring-amount" class="amount-input amount-input-sm" placeholder="المبلغ" autocomplete="off">
+        <span class="amount-currency">ر.س</span>
+      </div>
+      <div id="recurring-categories" class="chip-row"></div>
+      <input type="text" id="recurring-note" class="field-input" placeholder="الوصف (مثال: إيجار الشقة)" maxlength="40">
+      <label class="field-label" for="recurring-day">يوم الشهر</label>
+      <select id="recurring-day" class="setting-select setting-select-full"></select>
+      <button type="submit" class="btn-primary">إضافة</button>
+    </form>
+  </div>
+
+  <!-- ===== نافذة المتاجر المحفوظة ===== -->
+  <div class="sheet-backdrop hidden" id="learned-backdrop"></div>
+  <div class="sheet hidden" id="learned-sheet" role="dialog" aria-modal="true">
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title">🧠 المتاجر المحفوظة</h2>
+    <p class="setting-hint">هذي المتاجر تعلّمها التطبيق من تصحيحاتك، ويصنّف عملياتها تلقائياً. احذف أي قاعدة غلط.</p>
+    <div id="learned-list" class="learned-list"></div>
+  </div>
+
+  <!-- ===== شريط التحديث ===== -->
+  <div class="update-banner hidden" id="update-banner">
+    <span>🎉 يتوفر تحديث جديد</span>
+    <button id="update-now">حدّث الآن</button>
+  </div>
+
   <!-- ===== نافذة تأكيد ===== -->
   <div class="sheet-backdrop hidden" id="confirm-backdrop"></div>
   <div class="confirm-box hidden" id="confirm-box" role="alertdialog" aria-modal="true">
@@ -227,7 +292,13 @@
   <script src="js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then((reg) => {
+          if (window.__setupUpdatePrompt) window.__setupUpdatePrompt(reg);
+          // نفحص وجود تحديث عند كل تشغيل
+          reg.update();
+        });
+      });
     }
   </script>
 </body>

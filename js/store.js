@@ -6,6 +6,9 @@ const Store = (() => {
   const KEY_RELAY = 'masareefi.relay';
   const KEY_CYCLE_START = 'masareefi.cycleStartDay';
   const KEY_LEARNED = 'masareefi.learnedMerchants';
+  const KEY_BUDGETS = 'masareefi.budgets';
+  const KEY_RECURRING = 'masareefi.recurring';
+  const KEY_RECUR_DONE = 'masareefi.recurringDone';
 
   const DEFAULT_CATEGORIES = [
     { id: 'home',   name: 'بيت',      icon: '🏠', color: '#0ea5e9' },
@@ -87,10 +90,59 @@ const Store = (() => {
     save(KEY_LEARNED, map);
   }
 
+  // الميزانيات: { categoryId: amount } — سقف شهري لكل دورة
+  function getBudgets() { return load(KEY_BUDGETS, {}); }
+  function setBudget(categoryId, amount) {
+    const b = load(KEY_BUDGETS, {});
+    if (amount > 0) b[categoryId] = amount;
+    else delete b[categoryId];
+    save(KEY_BUDGETS, b);
+  }
+
+  // المصاريف المتكررة: [{ id, amount, categoryId, note, dayOfMonth }]
+  function getRecurring() { return load(KEY_RECURRING, []); }
+  function setRecurring(list) { save(KEY_RECURRING, list); }
+  // سجل ما تولّد فعلاً: مجموعة مفاتيح "templateId@cycleKey"
+  function getRecurringDone() { return load(KEY_RECUR_DONE, []); }
+  function markRecurringDone(list) { save(KEY_RECUR_DONE, list.slice(-400)); }
+
+  // ===== النسخ الاحتياطي =====
+  function exportAll() {
+    return {
+      app: 'masareefi',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: {
+        expenses: getExpenses(),
+        categories: getCategories(),
+        cycleStartDay: getCycleStartDay(),
+        learnedMerchants: getLearnedMerchants(),
+        budgets: getBudgets(),
+        recurring: getRecurring(),
+      },
+    };
+  }
+
+  // يرجع true عند نجاح الاستيراد
+  function importAll(obj) {
+    if (!obj || obj.app !== 'masareefi' || !obj.data) return false;
+    const d = obj.data;
+    if (Array.isArray(d.expenses)) save(KEY_EXPENSES, d.expenses);
+    if (Array.isArray(d.categories) && d.categories.length) save(KEY_CATEGORIES, d.categories);
+    if (d.cycleStartDay) setCycleStartDay(Number(d.cycleStartDay));
+    if (d.learnedMerchants && typeof d.learnedMerchants === 'object') save(KEY_LEARNED, d.learnedMerchants);
+    if (d.budgets && typeof d.budgets === 'object') save(KEY_BUDGETS, d.budgets);
+    if (Array.isArray(d.recurring)) save(KEY_RECURRING, d.recurring);
+    return true;
+  }
+
   return {
     getCategories, setCategories, getExpenses, setExpenses, newId,
     hasSmsHash, addSmsHash, getRelay, setRelay,
     getCycleStartDay, setCycleStartDay,
     getLearnedMerchants, learnMerchant, forgetMerchant,
+    getBudgets, setBudget,
+    getRecurring, setRecurring, getRecurringDone, markRecurringDone,
+    exportAll, importAll,
   };
 })();

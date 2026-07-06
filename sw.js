@@ -1,5 +1,5 @@
 /* عامل الخدمة — يخزّن التطبيق ليشتغل بدون إنترنت */
-const CACHE = 'masareefi-v5';
+const CACHE = 'masareefi-v6';
 const SHELL = [
   './',
   './index.html',
@@ -15,7 +15,12 @@ const SHELL = [
 
 self.addEventListener('install', (ev) => {
   ev.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
-  self.skipWaiting();
+  // لا نستبق الانتظار — ننتظر ضغطة «حدّث الآن» من المستخدم
+});
+
+// المستخدم ضغط «حدّث الآن» → نفعّل النسخة الجديدة فوراً
+self.addEventListener('message', (ev) => {
+  if (ev.data && ev.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (ev) => {
