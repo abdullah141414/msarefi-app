@@ -1,10 +1,11 @@
 /* عامل الخدمة — يخزّن التطبيق ليشتغل بدون إنترنت */
-const CACHE = 'masareefi-v1';
+const CACHE = 'masareefi-v2';
 const SHELL = [
   './',
   './index.html',
   './css/style.css',
   './js/store.js',
+  './js/sms.js',
   './js/app.js',
   './manifest.json',
   './icons/icon-192.png',

@@ -87,6 +87,20 @@
 
   $('expense-backdrop').addEventListener('click', () => closeSheet('expense-sheet'));
   $('category-backdrop').addEventListener('click', () => closeSheet('category-sheet'));
+  $('smshelp-backdrop').addEventListener('click', () => closeSheet('smshelp-sheet'));
+
+  // ===== شرح الإدخال التلقائي =====
+  const APP_URL = 'https://abdullah141414.github.io/msarefi-app/';
+  $('smshelp-url').textContent = `${APP_URL}#sms=`;
+  $('btn-sms-help').addEventListener('click', () => openSheet('smshelp-sheet'));
+  $('smshelp-copy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(`${APP_URL}#sms=`);
+      toast('تم نسخ الرابط ✓');
+    } catch {
+      toast('ما قدرت أنسخ — انسخه يدوياً');
+    }
+  });
 
   // ===== نافذة التأكيد =====
   let confirmCallback = null;
@@ -393,5 +407,60 @@
     renderCategories();
   }
 
+  // ===== الإدخال التلقائي من رسائل البنك (عبر أتمتة الاختصارات) =====
+  function handleSmsFromUrl() {
+    const hash = window.location.hash;
+    const marker = '#sms=';
+    if (!hash.startsWith(marker)) return;
+
+    let raw = '';
+    try {
+      raw = decodeURIComponent(hash.slice(marker.length));
+    } catch {
+      raw = hash.slice(marker.length);
+    }
+    // تنظيف العنوان حتى لا يُعاد التسجيل عند التحديث
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    if (!raw.trim()) return;
+
+    const fp = SmsParser.fingerprint(raw);
+    if (Store.hasSmsHash(fp)) {
+      toast('هذي الرسالة مسجلة من قبل');
+      return;
+    }
+
+    const result = SmsParser.parse(raw);
+
+    if (!result.ok) {
+      if (result.reason === 'not-purchase') {
+        toast('الرسالة ليست عملية شراء — ما انحفظ شي');
+      } else if (result.reason === 'no-amount') {
+        // ما قدرنا نستخرج المبلغ — نفتح النافذة والمستخدم يكمل
+        toast('ما قدرت أقرأ المبلغ — أكمل البيانات');
+        openExpenseSheet();
+        $('expense-note').value = (result.merchant || raw).slice(0, 60);
+      }
+      return;
+    }
+
+    const categoryId = SmsParser.guessCategory(result.merchant, raw, categories);
+    const expense = {
+      id: Store.newId(),
+      amount: result.amount,
+      categoryId,
+      date: result.date || todayISO(),
+      note: result.merchant,
+    };
+    expenses.push(expense);
+    Store.setExpenses(expenses);
+    Store.addSmsHash(fp);
+    recordMonth = expense.date.slice(0, 7);
+    renderAll();
+
+    const cat = catById(categoryId);
+    toast(`✓ تم تسجيل ${money(expense.amount)}${expense.note ? ` من ${expense.note}` : ''} في «${cat.name}»`);
+  }
+
   renderAll();
+  handleSmsFromUrl();
 })();
