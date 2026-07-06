@@ -1,5 +1,5 @@
 /* عامل الخدمة — يخزّن التطبيق ليشتغل بدون إنترنت */
-const CACHE = 'masareefi-v3';
+const CACHE = 'masareefi-v4';
 const SHELL = [
   './',
   './index.html',

@@ -1,9 +1,10 @@
 /* محلل رسائل البنوك — يستخرج المبلغ والمتجر ويخمّن الفئة */
 const SmsParser = (() => {
 
-  // تحويل الأرقام العربية إلى لاتينية وتوحيد الفواصل
+  // تحويل الأرقام العربية إلى لاتينية وتوحيد الفواصل وإزالة العلامات الخفية
   function normalizeDigits(s) {
     return s
+      .replace(/[‎‏؜​]/g, '')
       .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
       .replace(/٫/g, '.');
   }
@@ -17,6 +18,9 @@ const SmsParser = (() => {
     /رصيدك الحالي هو|استعلام رصيد|balance inquiry/i,
   ];
 
+  // سطور الرصيد والرسوم — تُستبعد قبل البحث عن مبلغ الشراء
+  const NON_AMOUNT_LINES = /رصيد|متبقي|رسوم|مستحق|إجمالي|اجمالي|balance|fee|total due/i;
+
   // أنماط استخراج المبلغ — الأكثر تحديداً أولاً
   const AMOUNT_PATTERNS = [
     /(?:مبلغ|بمبلغ|قيمة|بقيمة)\s*:?\s*(?:SAR|SR|ر\.?س\.?)?\s*([\d,]+(?:\.\d+)?)/i,
@@ -25,18 +29,21 @@ const SmsParser = (() => {
     /(?:Amount|POS)\s*:?\s*(?:SAR|SR)?\s*([\d,]+(?:\.\d+)?)/i,
   ];
 
-  // أنماط استخراج اسم المتجر
+  // أنماط استخراج اسم المتجر — أول السطر
   const MERCHANT_PATTERNS = [
-    /(?:لدى|لدي)\s*:?\s*(.+?)(?:\n|$)/,
-    /(?:من|عند)\s*:\s*(.+?)(?:\n|$)/,
-    /(?:At|Merchant)\s*:?\s*(.+?)(?:\n|$)/i,
-    /(?:في|بـ)\s*:\s*(.+?)(?:\n|$)/,
+    /^\s*(?:لدى|لدي)\s*:?\s*(.+?)\s*$/m,
+    /^\s*من\s*:\s*(.+?)\s*$/m,               // من: المتجر
+    /^\s*من\s+(?!خلال)(.+?)\s*$/m,           // من المتجر
+    /^\s*من([A-Za-z0-9].*?)\s*$/m,           // منSalma — ملتصقة بحروف لاتينية فقط
+    /^\s*عند\s*:?\s*(.+?)\s*$/m,
+    /^\s*(?:At|Merchant)\s*:?\s*(.+?)\s*$/im,
   ];
 
   // أنماط التاريخ داخل الرسالة
   const DATE_PATTERNS = [
-    /(\d{4})-(\d{1,2})-(\d{1,2})/,          // 2026-07-06
-    /(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/,  // 06/07/2026 أو 06-07-2026
+    /(\d{4})-(\d{1,2})-(\d{1,2})/,                    // 2026-07-06
+    /(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/,            // 06/07/2026
+    /(\d{1,2})[\/-](\d{1,2})[\/-](\d{2})(?!\d)/,      // 04/07/26 أو 5-7-26 (يوم-شهر-سنة)
   ];
 
   // كلمات مفتاحية ← معرّف الفئة الافتراضية
@@ -50,8 +57,13 @@ const SmsParser = (() => {
   ];
 
   function parseAmount(text) {
+    // نستبعد سطور الرصيد والرسوم حتى لا تُقرأ كمبلغ الشراء
+    const searchable = text
+      .split('\n')
+      .filter((line) => !NON_AMOUNT_LINES.test(line))
+      .join('\n');
     for (const re of AMOUNT_PATTERNS) {
-      const m = text.match(re);
+      const m = searchable.match(re);
       if (m) {
         const val = parseFloat(m[1].replace(/,/g, ''));
         if (isFinite(val) && val > 0) return Math.round(val * 100) / 100;
@@ -73,16 +85,26 @@ const SmsParser = (() => {
 
   function pad(n) { return String(n).padStart(2, '0'); }
 
+  // تُرجع التاريخ فقط إذا كان منطقياً (ليس مستقبلياً ولا أقدم من سنة)
+  function validDate(y, mo, d) {
+    y = Number(y); mo = Number(mo); d = Number(d);
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    const date = new Date(y, mo - 1, d);
+    const now = Date.now();
+    if (date.getTime() > now + 86400000) return null;
+    if (date.getTime() < now - 365 * 86400000) return null;
+    return `${y}-${pad(mo)}-${pad(d)}`;
+  }
+
   function parseDate(text) {
     let m = text.match(DATE_PATTERNS[0]);
-    if (m) {
-      const [, y, mo, d] = m;
-      return `${y}-${pad(mo)}-${pad(d)}`;
-    }
+    if (m) return validDate(m[1], m[2], m[3]);
     m = text.match(DATE_PATTERNS[1]);
+    if (m) return validDate(m[3], m[2], m[1]);
+    m = text.match(DATE_PATTERNS[2]);
     if (m) {
-      const [, d, mo, y] = m;
-      return `${y}-${pad(mo)}-${pad(d)}`;
+      // يوم-شهر-سنة مختصرة، وإذا طلع الشهر غير منطقي نجرب العكس
+      return validDate(2000 + Number(m[3]), m[2], m[1]) || validDate(2000 + Number(m[3]), m[1], m[2]);
     }
     return null;
   }
