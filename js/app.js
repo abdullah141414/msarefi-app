@@ -100,24 +100,50 @@
   }
 
   // ===== حركات الدخول =====
-  // عدّاد يتصاعد للرقم — يبدأ من صفر بأرقام صحيحة ثم يثبت على القيمة الدقيقة
-  function countUp(el, to, dur = 900) {
+  // عدّاد أسطواني (Odometer): كل خانة تلف بسلاسة من 0 وتستقر على رقمها.
+  // الحركة كلها CSS transform — ناعمة تماماً وبدون أي اهتزاز نصي.
+  function countUp(el, to) {
     if (!el) return;
     if (reduceMotion || to <= 0) { el.textContent = money(to); return; }
-    el.textContent = money(0); // يبدأ من الصفر بوضوح
-    const start = performance.now();
-    function frame(now) {
-      const t = Math.min(1, (now - start) / dur);
-      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
-      if (t < 1) {
-        // أرقام صحيحة أثناء العدّ حتى ما تتراقص الكسور
-        el.textContent = `${fmtMoney.format(Math.round(to * eased))} ر.س`;
-        requestAnimationFrame(frame);
+
+    const finalStr = fmtMoney.format(to);
+    el.innerHTML = '';
+    const wrap = document.createElement('span');
+    wrap.className = 'odo';
+    const strips = [];
+
+    for (const ch of finalStr) {
+      if (ch >= '0' && ch <= '9') {
+        const col = document.createElement('span');
+        col.className = 'odo-col';
+        const strip = document.createElement('span');
+        strip.className = 'odo-strip';
+        let cells = '';
+        // دورتان من 0-9 حتى تلف كل خانة لفة كاملة قبل ما تستقر
+        for (let r = 0; r < 2; r++) {
+          for (let d = 0; d <= 9; d++) cells += `<span class="odo-cell">${d}</span>`;
+        }
+        strip.innerHTML = cells;
+        col.appendChild(strip);
+        wrap.appendChild(col);
+        strips.push({ strip, digit: Number(ch) });
       } else {
-        el.textContent = money(to); // القيمة الدقيقة (بالكسور) في النهاية
+        const sep = document.createElement('span');
+        sep.textContent = ch;
+        wrap.appendChild(sep);
       }
     }
-    requestAnimationFrame(frame);
+
+    el.appendChild(wrap);
+    el.appendChild(document.createTextNode(' ر.س'));
+
+    // إطاران حتى يرسم المتصفح وضعية الصفر ثم تبدأ اللفة
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      strips.forEach((s, i) => {
+        s.strip.style.transitionDuration = `${(0.9 + i * 0.13).toFixed(2)}s`;
+        s.strip.style.transform = `translateY(${-(10 + s.digit)}em)`;
+      });
+    }));
   }
 
   // يعيد تشغيل حركات دخول العرض النشط
