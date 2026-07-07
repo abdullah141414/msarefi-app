@@ -32,13 +32,14 @@ const Stats = (() => {
   // دائرة Donut — breakdown: [{cat,total,pct}]
   function donutSVG(breakdown) {
     const C = 2 * Math.PI * 48; // محيط الدائرة نصف قطرها 48
+    const gap = breakdown.length > 1 ? 3.5 : 0; // فاصل بسيط بين القطاعات
     let acc = 0;
     let segments = '';
     breakdown.forEach((row) => {
       const frac = row.pct / 100;
       if (frac <= 0) return;
-      const dash = frac * C;
-      segments += `<circle cx="60" cy="60" r="48" fill="none" stroke="${row.cat.color}" stroke-width="20"
+      const dash = Math.max(0.5, frac * C - gap);
+      segments += `<circle cx="60" cy="60" r="48" fill="none" stroke="${row.cat.color}" stroke-width="18"
         stroke-dasharray="${dash.toFixed(2)} ${(C - dash).toFixed(2)}"
         stroke-dashoffset="${(-acc * C).toFixed(2)}"
         transform="rotate(-90 60 60)"></circle>`;
@@ -46,10 +47,10 @@ const Stats = (() => {
     });
     // إذا فئة واحدة تملأ الدائرة بالكامل
     if (!segments && breakdown.length === 1) {
-      segments = `<circle cx="60" cy="60" r="48" fill="none" stroke="${breakdown[0].cat.color}" stroke-width="20"></circle>`;
+      segments = `<circle cx="60" cy="60" r="48" fill="none" stroke="${breakdown[0].cat.color}" stroke-width="18"></circle>`;
     }
     return `<svg viewBox="0 0 120 120" class="donut-svg" role="img">
-      <circle cx="60" cy="60" r="48" fill="none" stroke="var(--track)" stroke-width="20"></circle>
+      <circle cx="60" cy="60" r="48" fill="none" stroke="var(--track)" stroke-width="18"></circle>
       ${segments}
     </svg>`;
   }
