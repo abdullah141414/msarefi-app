@@ -100,17 +100,22 @@
   }
 
   // ===== حركات الدخول =====
-  // عدّاد يتصاعد للرقم
-  function countUp(el, to, dur = 850) {
+  // عدّاد يتصاعد للرقم — يبدأ من صفر بأرقام صحيحة ثم يثبت على القيمة الدقيقة
+  function countUp(el, to, dur = 900) {
     if (!el) return;
     if (reduceMotion || to <= 0) { el.textContent = money(to); return; }
+    el.textContent = money(0); // يبدأ من الصفر بوضوح
     const start = performance.now();
     function frame(now) {
       const t = Math.min(1, (now - start) / dur);
       const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
-      el.textContent = money(to * eased);
-      if (t < 1) requestAnimationFrame(frame);
-      else el.textContent = money(to);
+      if (t < 1) {
+        // أرقام صحيحة أثناء العدّ حتى ما تتراقص الكسور
+        el.textContent = `${fmtMoney.format(Math.round(to * eased))} ر.س`;
+        requestAnimationFrame(frame);
+      } else {
+        el.textContent = money(to); // القيمة الدقيقة (بالكسور) في النهاية
+      }
     }
     requestAnimationFrame(frame);
   }
