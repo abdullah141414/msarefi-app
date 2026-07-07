@@ -1,5 +1,5 @@
 /* عامل الخدمة — يخزّن التطبيق ليشتغل بدون إنترنت */
-const CACHE = 'masareefi-v11';
+const CACHE = 'masareefi-v12';
 const SHELL = [
   './',
   './index.html',
@@ -21,6 +21,24 @@ self.addEventListener('install', (ev) => {
 // المستخدم ضغط «حدّث الآن» → نفعّل النسخة الجديدة فوراً
 self.addEventListener('message', (ev) => {
   if (ev.data && ev.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
+// إشعار وصول عملية جديدة للصندوق
+self.addEventListener('push', (ev) => {
+  ev.waitUntil(self.registration.showNotification('مصاريفي 💰', {
+    body: 'وصلت عملية جديدة — افتح التطبيق لتسجيلها',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: 'masareefi-new-sms',
+  }));
+});
+
+self.addEventListener('notificationclick', (ev) => {
+  ev.notification.close();
+  ev.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+    for (const w of wins) if ('focus' in w) return w.focus();
+    return clients.openWindow('./');
+  }));
 });
 
 self.addEventListener('activate', (ev) => {

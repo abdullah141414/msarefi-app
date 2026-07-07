@@ -268,7 +268,7 @@
     }
   }
 
-  $('btn-sms-help').addEventListener('click', () => { renderRelayUi(); openSheet('smshelp-sheet'); });
+  $('btn-sms-help').addEventListener('click', () => { renderRelayUi(); syncPushUi(); openSheet('smshelp-sheet'); });
 
   $('relay-save').addEventListener('click', () => {
     const raw = $('relay-url-input').value.trim();
@@ -305,6 +305,64 @@
     if (saved === null) toast('ما قدرت أوصل للصندوق — تأكد من الإنترنت والرابط');
     else if (saved === 0) toast('ما في رسائل جديدة بالصندوق');
     // إذا فيه عمليات جديدة، syncRelay عرض الإشعار بنفسه
+  });
+
+  // ===== إشعارات وصول العمليات (Web Push) =====
+  const VAPID_PUBLIC = 'BNKrvdNNT-GuHgz1OYzx0swCsXTKQi-TZEKvV-a6YbVxlkddVgpDLWpPFwVIWHX7q_2W2Sj8soT44zV_2mVHcyA';
+
+  function urlB64ToUint8(s) {
+    s = s.replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  }
+
+  function syncPushUi() {
+    const supported = 'PushManager' in window && 'Notification' in window;
+    const relay = Store.getRelay();
+    $('btn-push').classList.toggle('hidden', !supported || !relay);
+    $('push-note').classList.toggle('hidden', !supported || !relay);
+    if (supported && relay) {
+      $('btn-push').textContent = settings.pushEnabled
+        ? '🔕 إيقاف إشعار العمليات'
+        : '🔔 نبّهني عند وصول عملية جديدة';
+    }
+  }
+
+  $('btn-push').addEventListener('click', async () => {
+    const relay = Store.getRelay();
+    if (!relay) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (settings.pushEnabled) {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await fetch(`${relay.origin}/push-sub?key=${encodeURIComponent(relay.key)}&endpoint=${encodeURIComponent(sub.endpoint)}`, { method: 'DELETE' });
+          await sub.unsubscribe();
+        }
+        settings.pushEnabled = false;
+        Store.setSettings({ pushEnabled: false });
+        toast('تم إيقاف الإشعارات');
+      } else {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') { toast('ما سمحت بالإشعارات'); return; }
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlB64ToUint8(VAPID_PUBLIC),
+        });
+        const res = await fetch(`${relay.origin}/push-sub?key=${encodeURIComponent(relay.key)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sub.toJSON()),
+        });
+        if (!res.ok) throw new Error('sub-failed');
+        settings.pushEnabled = true;
+        Store.setSettings({ pushEnabled: true });
+        toast('تم تفعيل الإشعارات ✓');
+      }
+    } catch {
+      toast('تعذّر تفعيل الإشعارات — تأكد أن التطبيق مثبّت على الشاشة الرئيسية وأن الصندوق محدّث');
+    }
+    syncPushUi();
   });
 
   // ===== نافذة التأكيد =====
