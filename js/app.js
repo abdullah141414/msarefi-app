@@ -17,6 +17,10 @@
   let statsTotal = 0;                         // لعدّاد الإحصائيات
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // ترتيب التبويبات كما تظهر بالشريط — يُستخدم لتحديد اتجاه الانتقال (تبويب أو سحب)
+  const TAB_ORDER = ['home', 'stats', 'record', 'categories'];
+  let activeView = 'home';
+
   const CATEGORY_ICONS = ['🏠','🚗','🍽️','🛍️','💊','📱','👕','🎓','✈️','⚽','🎮','☕','⛽','🧾','🎁','💇','🐈','🕌','💼','📦'];
   const CATEGORY_COLORS = ['#0ea5e9','#f59e0b','#ef4444','#a855f7','#10b981','#6366f1','#ec4899','#f97316','#14b8a6','#64748b'];
 
@@ -168,9 +172,14 @@
   }
 
   // يعيد تشغيل حركات دخول العرض النشط
+  // full=true: الحركة الكاملة (تتابع البطاقات، الدائرة، اللمعة) — لأول تحميل ولتصفّح الدورات
+  // full=false: عدّاد الأرقام فقط — للتنقل العادي بين التبويبات (تفادياً لتراكم حركات يبين كرمشة)
   let entranceTimer;
-  function playEntrance(viewName) {
+  function playEntrance(viewName, full = true) {
     if (reduceMotion) return;
+    if (viewName === 'home') countUp($('home-total'), homeSpendTotal);
+    else if (viewName === 'stats' && statsTotal > 0) countUp($('donut-total'), statsTotal);
+    if (!full) return;
     const view = $(`view-${viewName}`);
     if (!view) return;
     view.classList.remove('animate-in');
@@ -179,8 +188,6 @@
     // نشيل الصنف بعد انتهاء الحركات حتى ما تتكرر عند إعادة الرسم
     clearTimeout(entranceTimer);
     entranceTimer = setTimeout(() => view.classList.remove('animate-in'), 1600);
-    if (viewName === 'home') countUp($('home-total'), homeSpendTotal);
-    else if (viewName === 'stats' && statsTotal > 0) countUp($('donut-total'), statsTotal);
   }
 
   recordCycle = currentCycleKey();
@@ -209,24 +216,112 @@
     toastTimer = setTimeout(() => el.classList.add('hidden'), 5000);
   }
 
-  // ===== التنقل بين العروض (مع انتقال سلس إن توفر) =====
+  // ===== التنقل بين العروض (تبويب أو سحب) =====
+  // انتقال واحد خفيف واتجاهي — بلا تراكم حركات وبلا رمشة
+  let navInTimer;
+  function goToView(viewName) {
+    if (!TAB_ORDER.includes(viewName) || viewName === activeView) return;
+    const forward = TAB_ORDER.indexOf(viewName) > TAB_ORDER.indexOf(activeView);
+    activeView = viewName;
+
+    document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === viewName));
+    document.querySelectorAll('.view').forEach((v) => { v.classList.remove('active', 'nav-in'); v.style.transform = ''; v.style.transition = ''; });
+    const view = $(`view-${viewName}`);
+    view.classList.add('active');
+    window.scrollTo(0, 0);
+    renderAll();
+
+    if (!reduceMotion) {
+      void view.offsetWidth; // إعادة تدفّق لإعادة تشغيل الحركة
+      view.style.setProperty('--nav-dir', forward ? '1' : '-1');
+      view.classList.add('nav-in');
+      // شبكة أمان: نضمن زوال الصنف والخاصية حتى لو انقطعت الحركة لأي سبب
+      clearTimeout(navInTimer);
+      navInTimer = setTimeout(() => {
+        view.classList.remove('nav-in');
+        view.style.removeProperty('--nav-dir');
+      }, 320);
+    }
+    playEntrance(viewName, false);
+  }
+
   document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      const apply = () => {
-        document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t === tab));
-        document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
-        $(`view-${tab.dataset.view}`).classList.add('active');
-        window.scrollTo(0, 0);
-        renderAll();
-      };
-      if (document.startViewTransition && !reduceMotion) {
-        document.startViewTransition(apply).finished.then(() => playEntrance(tab.dataset.view));
-      } else {
-        apply();
-        playEntrance(tab.dataset.view);
-      }
-    });
+    tab.addEventListener('click', () => goToView(tab.dataset.view));
   });
+
+  // ===== السحب بين الصفحات (يعمل جنباً إلى جنب مع أيقونات التبويب) =====
+  (function swipeNav() {
+    const IGNORE = '.sheet, .sheet-backdrop, .onboarding, .lock-screen, .swipe-wrap, .insights-row, .bars-wrap, .smshelp-url, input, textarea, select';
+    let sx = 0, sy = 0, tracking = false, horizontal = null, dragging = false, dragView = null, curDx = 0;
+
+    function overlayOpen() {
+      return document.querySelector('.sheet:not(.hidden)')
+        || !$('lock-screen').classList.contains('hidden')
+        || !$('onboarding').classList.contains('hidden');
+    }
+
+    document.addEventListener('touchstart', (ev) => {
+      if (ev.touches.length !== 1 || overlayOpen() || ev.target.closest(IGNORE)) { tracking = false; return; }
+      const t = ev.touches[0];
+      sx = t.clientX; sy = t.clientY;
+      tracking = true; horizontal = null; dragging = false; curDx = 0;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (ev) => {
+      if (!tracking) return;
+      const t = ev.touches[0];
+      const dx = t.clientX - sx, dy = t.clientY - sy;
+      if (horizontal === null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+        horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
+        if (!horizontal) { tracking = false; return; }
+      }
+      if (!horizontal) return;
+      if (!dragging) {
+        dragging = true;
+        dragView = $(`view-${activeView}`);
+        dragView.style.transition = 'none';
+      }
+      curDx = dx;
+      const idx = TAB_ORDER.indexOf(activeView);
+      // مقاومة عند طرفي القائمة (ما فيه صفحة أبعد بهذا الاتجاه)
+      const atEdge = (dx < 0 && idx === TAB_ORDER.length - 1) || (dx > 0 && idx === 0);
+      const eff = atEdge ? dx * 0.25 : dx;
+      dragView.style.transform = `translateX(${Math.max(-130, Math.min(130, eff))}px)`;
+    }, { passive: true });
+
+    function endDrag() {
+      if (!dragging) { tracking = false; return; }
+      const idx = TAB_ORDER.indexOf(activeView);
+      const goNext = curDx <= -55 && idx < TAB_ORDER.length - 1;
+      const goPrev = curDx >= 55 && idx > 0;
+      const view = dragView;
+      tracking = false; dragging = false; dragView = null;
+
+      if (reduceMotion) {
+        view.style.transition = ''; view.style.transform = '';
+        if (goNext) goToView(TAB_ORDER[idx + 1]);
+        else if (goPrev) goToView(TAB_ORDER[idx - 1]);
+        return;
+      }
+
+      view.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1)';
+      if (goNext || goPrev) {
+        view.style.transform = `translateX(${goNext ? -130 : 130}px)`;
+        const target = goNext ? TAB_ORDER[idx + 1] : TAB_ORDER[idx - 1];
+        setTimeout(() => {
+          view.style.transition = '';
+          view.style.transform = '';
+          goToView(target);
+        }, 190);
+      } else {
+        view.style.transform = 'translateX(0)';
+        setTimeout(() => { view.style.transition = ''; view.style.transform = ''; }, 220);
+      }
+    }
+
+    document.addEventListener('touchend', endDrag);
+    document.addEventListener('touchcancel', endDrag);
+  })();
 
   // ===== النوافذ المنبثقة =====
   function openSheet(sheetId) {
@@ -868,7 +963,7 @@
       item.addEventListener('click', () => {
         recordCatFilter = row.cat.id;
         recordCycle = statsCycle;
-        document.querySelector('.tab[data-view="record"]').click();
+        goToView('record');
       });
       bd.appendChild(item);
     });
