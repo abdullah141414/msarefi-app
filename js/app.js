@@ -13,6 +13,9 @@
   let selectedColor = null;
   let recurringCategoryId = null;             // داخل نافذة المتكررة
   let recordQuery = '';                       // نص البحث في السجل
+  let homeSpendTotal = 0;                     // لعدّاد الرئيسية
+  let statsTotal = 0;                         // لعدّاد الإحصائيات
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const CATEGORY_ICONS = ['🏠','🚗','🍽️','🛍️','💊','📱','👕','🎓','✈️','⚽','🎮','☕','⛽','🧾','🎁','💇','🐈','🕌','💼','📦'];
   const CATEGORY_COLORS = ['#0ea5e9','#f59e0b','#ef4444','#a855f7','#10b981','#6366f1','#ec4899','#f97316','#14b8a6','#64748b'];
@@ -96,6 +99,38 @@
     return parseFloat(raw);
   }
 
+  // ===== حركات الدخول =====
+  // عدّاد يتصاعد للرقم
+  function countUp(el, to, dur = 850) {
+    if (!el) return;
+    if (reduceMotion || to <= 0) { el.textContent = money(to); return; }
+    const start = performance.now();
+    function frame(now) {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      el.textContent = money(to * eased);
+      if (t < 1) requestAnimationFrame(frame);
+      else el.textContent = money(to);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // يعيد تشغيل حركات دخول العرض النشط
+  let entranceTimer;
+  function playEntrance(viewName) {
+    if (reduceMotion) return;
+    const view = $(`view-${viewName}`);
+    if (!view) return;
+    view.classList.remove('animate-in');
+    void view.offsetWidth; // إعادة تدفّق لإعادة تشغيل الحركات
+    view.classList.add('animate-in');
+    // نشيل الصنف بعد انتهاء الحركات حتى ما تتكرر عند إعادة الرسم
+    clearTimeout(entranceTimer);
+    entranceTimer = setTimeout(() => view.classList.remove('animate-in'), 1600);
+    if (viewName === 'home') countUp($('home-total'), homeSpendTotal);
+    else if (viewName === 'stats' && statsTotal > 0) countUp($('donut-total'), statsTotal);
+  }
+
   recordCycle = currentCycleKey();
   statsCycle = currentCycleKey();
 
@@ -116,6 +151,7 @@
       $(`view-${tab.dataset.view}`).classList.add('active');
       window.scrollTo(0, 0);
       renderAll();
+      playEntrance(tab.dataset.view);
     });
   });
 
@@ -224,6 +260,7 @@
     const spendTotal = sum(spendList);
     const incomeTotal = sum(incomeList);
 
+    homeSpendTotal = spendTotal;
     $('home-month-name').textContent = cycleLabel(key);
     $('home-total').textContent = money(spendTotal);
     $('home-count').textContent = spendList.length
@@ -360,6 +397,7 @@
     $('stats-month-name').textContent = cycleLabel(statsCycle);
     const cycleExpenses = onlyExpenses(expensesOfCycle(statsCycle));
     const total = sum(cycleExpenses);
+    statsTotal = total;
 
     const hasData = cycleExpenses.length > 0;
     $('stats-content').classList.toggle('hidden', !hasData);
@@ -426,10 +464,12 @@
   $('stats-prev').addEventListener('click', () => {
     statsCycle = shiftCycle(statsCycle, -1);
     renderStats();
+    playEntrance('stats');
   });
   $('stats-next').addEventListener('click', () => {
     statsCycle = shiftCycle(statsCycle, 1);
     renderStats();
+    playEntrance('stats');
   });
 
   // ===== إعداد بداية الشهر (دورة الراتب) =====
@@ -1014,6 +1054,7 @@
 
   generateRecurring();
   renderAll();
+  playEntrance('home');
   handleSmsFromUrl();
   syncRelay();
 })();
