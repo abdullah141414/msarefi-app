@@ -109,6 +109,22 @@ const SmsParser = (() => {
     return null;
   }
 
+  // آخر 4 أرقام من البطاقة: «بطاقة:4886»، «X6755»، «**8079»، «5280*»
+  const CARD_PATTERNS = [
+    /(?:بطاقة|البطاقة|card)\s*:?\s*\*{0,2}(\d{4})/i,
+    /[X×]\s?(\d{4})/,
+    /\*{2}(\d{4})/,
+    /(\d{4})\*/,
+  ];
+
+  function parseCard(text) {
+    for (const re of CARD_PATTERNS) {
+      const m = text.match(re);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
   function parse(rawText) {
     const text = normalizeDigits(String(rawText || '')).trim();
     if (!text) return { ok: false, reason: 'empty' };
@@ -120,9 +136,10 @@ const SmsParser = (() => {
     const amount = parseAmount(text);
     const merchant = parseMerchant(text);
     const date = parseDate(text);
+    const card = parseCard(text);
 
     if (amount === null) return { ok: false, reason: 'no-amount', merchant, text };
-    return { ok: true, amount, merchant, date };
+    return { ok: true, amount, merchant, date, card };
   }
 
   // تطبيع اسم المتجر لمطابقة ثابتة (يزيل رموز/أرقام الفرع والبطاقة)

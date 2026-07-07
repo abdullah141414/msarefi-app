@@ -9,6 +9,19 @@ const Store = (() => {
   const KEY_BUDGETS = 'masareefi.budgets';
   const KEY_RECURRING = 'masareefi.recurring';
   const KEY_RECUR_DONE = 'masareefi.recurringDone';
+  const KEY_SETTINGS = 'masareefi.settings';
+
+  const DEFAULT_SETTINGS = {
+    theme: 'teal',          // teal | royal | gold | night
+    mode: 'auto',           // auto | light | dark
+    arabicDigits: false,    // أرقام مشرقية ٠-٩
+    hideAmounts: false,     // وضع التخفي
+    savingsGoal: 0,         // هدف الادخار الشهري
+    pinHash: null,          // قفل الخصوصية
+    faceId: false,
+    onboarded: false,
+    dismissedSubs: [],      // اقتراحات اشتراكات مرفوضة
+  };
 
   const DEFAULT_CATEGORIES = [
     { id: 'home',   name: 'بيت',      icon: '🏠', color: '#0ea5e9' },
@@ -106,6 +119,14 @@ const Store = (() => {
   function getRecurringDone() { return load(KEY_RECUR_DONE, []); }
   function markRecurringDone(list) { save(KEY_RECUR_DONE, list.slice(-400)); }
 
+  // الإعدادات العامة — كائن واحد مدموج مع الافتراضيات
+  function getSettings() {
+    return { ...DEFAULT_SETTINGS, ...load(KEY_SETTINGS, {}) };
+  }
+  function setSettings(patch) {
+    save(KEY_SETTINGS, { ...getSettings(), ...patch });
+  }
+
   // ===== النسخ الاحتياطي =====
   function exportAll() {
     return {
@@ -119,6 +140,7 @@ const Store = (() => {
         learnedMerchants: getLearnedMerchants(),
         budgets: getBudgets(),
         recurring: getRecurring(),
+        settings: getSettings(),
       },
     };
   }
@@ -133,6 +155,7 @@ const Store = (() => {
     if (d.learnedMerchants && typeof d.learnedMerchants === 'object') save(KEY_LEARNED, d.learnedMerchants);
     if (d.budgets && typeof d.budgets === 'object') save(KEY_BUDGETS, d.budgets);
     if (Array.isArray(d.recurring)) save(KEY_RECURRING, d.recurring);
+    if (d.settings && typeof d.settings === 'object') save(KEY_SETTINGS, d.settings);
     return true;
   }
 
@@ -143,6 +166,7 @@ const Store = (() => {
     getLearnedMerchants, learnMerchant, forgetMerchant,
     getBudgets, setBudget,
     getRecurring, setRecurring, getRecurringDone, markRecurringDone,
+    getSettings, setSettings,
     exportAll, importAll,
   };
 })();

@@ -23,14 +23,20 @@
   <!-- ===== الرئيسية ===== -->
   <main id="view-home" class="view active">
     <header class="hero">
+      <button class="hero-eye" id="btn-hide-amounts" aria-label="إخفاء المبالغ">👁</button>
       <p class="hero-label">مصاريف <span id="home-month-name"></span></p>
       <h1 class="hero-total" id="home-total">0 ر.س</h1>
       <p class="hero-sub" id="home-count"></p>
+      <p class="hero-compare hidden" id="home-compare"></p>
       <div class="hero-net hidden" id="home-net">
         <span class="net-item"><small>الدخل</small><b id="home-income">0</b></span>
         <span class="net-item"><small>الصافي</small><b id="home-netval">0</b></span>
       </div>
     </header>
+
+    <div class="goal-card hidden" id="home-goal"></div>
+    <div class="insights-row hidden" id="home-insights"></div>
+    <div class="insight-card sub-card hidden" id="home-subscription"></div>
     <section class="section">
       <h2 class="section-title">الفئات</h2>
       <div id="home-categories" class="category-grid"></div>
@@ -45,7 +51,7 @@
   <!-- ===== الإحصائيات ===== -->
   <main id="view-stats" class="view">
     <header class="page-header">
-      <h1>إحصائيات</h1>
+      <h1>إحصائيات <button class="report-btn" id="btn-report" aria-label="مشاركة تقرير الشهر">📤</button></h1>
       <div class="month-switcher">
         <button class="month-btn" id="stats-prev" aria-label="الشهر السابق">›</button>
         <span id="stats-month-name" class="month-name"></span>
@@ -87,8 +93,9 @@
         <button class="month-btn" id="month-next" aria-label="الشهر التالي">‹</button>
       </div>
       <p class="month-total" id="record-total"></p>
+      <div class="record-filter hidden" id="record-filter"></div>
       <div class="search-wrap">
-        <input type="search" id="record-search" class="search-input" placeholder="🔍 ابحث باسم المتجر أو الفئة" autocomplete="off">
+        <input type="search" id="record-search" class="search-input" placeholder="🔍 ابحث بالمتجر أو الفئة أو رقم البطاقة" autocomplete="off">
       </div>
     </header>
     <div id="record-list" class="record-list"></div>
@@ -114,16 +121,47 @@
 
     <section class="section settings-section">
       <h2 class="section-title">الإعدادات</h2>
+
+      <div class="setting-card">
+        <p class="setting-label">المظهر</p>
+        <div class="theme-row">
+          <button class="theme-swatch" data-theme="teal" style="--sw:#0f9e8f" aria-label="تركوازي"></button>
+          <button class="theme-swatch" data-theme="royal" style="--sw:#7c5cff" aria-label="بنفسجي"></button>
+          <button class="theme-swatch" data-theme="gold" style="--sw:#c08a2d" aria-label="ذهبي"></button>
+          <button class="theme-swatch" data-theme="ocean" style="--sw:#2470e8" aria-label="أزرق"></button>
+        </div>
+        <div class="kind-toggle mode-toggle" id="mode-toggle">
+          <button type="button" class="kind-btn" data-modeval="auto">تلقائي</button>
+          <button type="button" class="kind-btn" data-modeval="light">فاتح</button>
+          <button type="button" class="kind-btn" data-modeval="dark">داكن</button>
+        </div>
+        <label class="setting-row">
+          <span class="setting-label">أرقام عربية (٠١٢٣)</span>
+          <input type="checkbox" id="arabic-digits-toggle" class="setting-check">
+        </label>
+      </div>
+
       <div class="setting-card">
         <label class="setting-row" for="cycle-start-select">
           <span class="setting-label">بداية الشهر</span>
           <select id="cycle-start-select" class="setting-select"></select>
         </label>
         <p class="setting-hint">اختر يوم بداية دورتك الشهرية (مثلاً يوم راتبك). كل الحسابات والإحصائيات تتبع هذي الدورة.</p>
+        <label class="setting-row" for="savings-goal-input">
+          <span class="setting-label">🎯 هدف ادخار شهري</span>
+          <input type="text" inputmode="numeric" id="savings-goal-input" class="setting-select goal-input" placeholder="بدون">
+        </label>
       </div>
 
       <button class="btn-outline settings-btn" id="btn-recurring">🔁 المصاريف المتكررة</button>
       <button class="btn-outline settings-btn" id="btn-learned">🧠 المتاجر المحفوظة</button>
+      <button class="btn-outline settings-btn" id="btn-lock">🔒 قفل الخصوصية (رمز PIN)</button>
+      <div class="setting-card hidden" id="faceid-row">
+        <label class="setting-row">
+          <span class="setting-label">الفتح بالوجه/البصمة</span>
+          <input type="checkbox" id="faceid-toggle" class="setting-check">
+        </label>
+      </div>
 
       <div class="setting-card backup-card">
         <p class="setting-label">نسخة احتياطية</p>
@@ -131,6 +169,7 @@
         <div class="backup-actions">
           <button class="btn-outline" id="btn-export">⬇️ تصدير</button>
           <button class="btn-outline" id="btn-import">⬆️ استيراد</button>
+          <button class="btn-outline" id="btn-export-csv">📊 CSV</button>
         </div>
         <input type="file" id="import-file" accept="application/json,.json" hidden>
       </div>
@@ -140,19 +179,76 @@
   <!-- ===== شريط التنقل ===== -->
   <nav class="tabbar">
     <button class="tab active" data-view="home">
-      <span class="tab-icon">🏠</span><span class="tab-label">الرئيسية</span>
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>
+      <span class="tab-label">الرئيسية</span>
     </button>
     <button class="tab" data-view="stats">
-      <span class="tab-icon">📊</span><span class="tab-label">إحصائيات</span>
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+      <span class="tab-label">إحصائيات</span>
     </button>
     <button class="fab" id="btn-add-expense" aria-label="إضافة مصروف">＋</button>
     <button class="tab" data-view="record">
-      <span class="tab-icon">📋</span><span class="tab-label">السجل</span>
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      <span class="tab-label">السجل</span>
     </button>
     <button class="tab" data-view="categories">
-      <span class="tab-icon">🗂️</span><span class="tab-label">الفئات</span>
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2.5"/><rect x="13" y="3" width="8" height="8" rx="2.5"/><rect x="3" y="13" width="8" height="8" rx="2.5"/><rect x="13" y="13" width="8" height="8" rx="2.5"/></svg>
+      <span class="tab-label">الفئات</span>
     </button>
   </nav>
+
+  <!-- ===== مؤشر السحب للتحديث ===== -->
+  <div class="ptr hidden" id="ptr-indicator">🔄</div>
+
+  <!-- ===== الجولة الترحيبية ===== -->
+  <div class="onboarding hidden" id="onboarding">
+    <div class="ob-card">
+      <div class="ob-slide active">
+        <div class="ob-icon">🪄</div>
+        <h2>أهلاً بك في مصاريفي</h2>
+        <p>سجّل مصاريفك بلمسة، أو خلّها تتسجل <b>تلقائياً من رسائل البنك</b> — حتى وجوالك مقفل. تلقى الإعداد في تبويب «الفئات».</p>
+      </div>
+      <div class="ob-slide">
+        <div class="ob-icon">🎯</div>
+        <h2>دورتك وميزانياتك</h2>
+        <p>حدد <b>يوم راتبك</b> كبداية لشهرك، وحط <b>ميزانية لكل فئة</b> — ويوريك أول بأول وين وصلت.</p>
+      </div>
+      <div class="ob-slide">
+        <div class="ob-icon">📊</div>
+        <h2>يفهمك مع الوقت</h2>
+        <p>إحصائيات ورؤى ذكية، يتعلم فئات متاجرك من تصحيحاتك، ويكشف اشتراكاتك — كل بياناتك تبقى <b>على جهازك</b>.</p>
+      </div>
+      <div class="ob-dots"><span class="ob-dot active"></span><span class="ob-dot"></span><span class="ob-dot"></span></div>
+      <div class="ob-actions">
+        <button class="ob-skip">تخطي</button>
+        <button class="ob-next btn-primary">التالي</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== شاشة القفل ===== -->
+  <div class="lock-screen hidden" id="lock-screen">
+    <div class="lock-icon">🔒</div>
+    <p class="lock-title" id="lock-title">أدخل رمز القفل</p>
+    <div class="lock-dots">
+      <span class="lock-dot"></span><span class="lock-dot"></span><span class="lock-dot"></span><span class="lock-dot"></span>
+    </div>
+    <div class="lock-pad">
+      <button class="lock-key" data-key="1">1</button>
+      <button class="lock-key" data-key="2">2</button>
+      <button class="lock-key" data-key="3">3</button>
+      <button class="lock-key" data-key="4">4</button>
+      <button class="lock-key" data-key="5">5</button>
+      <button class="lock-key" data-key="6">6</button>
+      <button class="lock-key" data-key="7">7</button>
+      <button class="lock-key" data-key="8">8</button>
+      <button class="lock-key" data-key="9">9</button>
+      <span></span>
+      <button class="lock-key" data-key="0">0</button>
+      <button class="lock-key lock-del" data-key="del">⌫</button>
+    </div>
+    <button class="lock-faceid hidden" id="lock-faceid">👤 فتح بالوجه / البصمة</button>
+  </div>
 
   <!-- ===== نافذة إضافة/تعديل مصروف ===== -->
   <div class="sheet-backdrop hidden" id="expense-backdrop"></div>
@@ -174,6 +270,17 @@
       <input type="date" id="expense-date" class="field-input" required>
       <label class="field-label" for="expense-note">ملاحظة <small>(اختياري)</small></label>
       <input type="text" id="expense-note" class="field-input" placeholder="مثال: فاتورة الكهرباء" maxlength="60">
+      <div id="installments-row">
+        <label class="field-label" for="expense-installments">تقسيط (تابي/تمارا) <small>— ينوزع على الأشهر</small></label>
+        <select id="expense-installments" class="setting-select setting-select-full">
+          <option value="1">بدون تقسيط</option>
+          <option value="2">قسطين</option>
+          <option value="3">3 أقساط</option>
+          <option value="4">4 أقساط</option>
+          <option value="6">6 أقساط</option>
+          <option value="12">12 قسط</option>
+        </select>
+      </div>
       <div class="sheet-actions">
         <button type="submit" class="btn-primary" id="expense-save">حفظ</button>
         <button type="button" class="btn-danger hidden" id="expense-delete">حذف</button>
@@ -198,6 +305,7 @@
         <input type="text" inputmode="decimal" id="category-budget" class="amount-input amount-input-sm" placeholder="بدون حد" autocomplete="off">
         <span class="amount-currency">ر.س</span>
       </div>
+      <p class="setting-hint hidden" id="budget-hint"></p>
       <div class="sheet-actions">
         <button type="submit" class="btn-primary">حفظ</button>
         <button type="button" class="btn-danger hidden" id="category-delete">حذف</button>
@@ -253,8 +361,24 @@
       </div>
       <div id="recurring-categories" class="chip-row"></div>
       <input type="text" id="recurring-note" class="field-input" placeholder="الوصف (مثال: إيجار الشقة)" maxlength="40">
-      <label class="field-label" for="recurring-day">يوم الشهر</label>
-      <select id="recurring-day" class="setting-select setting-select-full"></select>
+      <label class="field-label" for="recurring-freq">التكرار</label>
+      <select id="recurring-freq" class="setting-select setting-select-full">
+        <option value="monthly">شهري</option>
+        <option value="weekly">أسبوعي</option>
+        <option value="yearly">سنوي</option>
+      </select>
+      <div id="recurring-day-row">
+        <label class="field-label" for="recurring-day">يوم الشهر</label>
+        <select id="recurring-day" class="setting-select setting-select-full"></select>
+      </div>
+      <div id="recurring-weekday-row" class="hidden">
+        <label class="field-label" for="recurring-weekday">يوم الأسبوع</label>
+        <select id="recurring-weekday" class="setting-select setting-select-full"></select>
+      </div>
+      <div id="recurring-date-row" class="hidden">
+        <label class="field-label" for="recurring-date">تاريخ الاستحقاق السنوي</label>
+        <input type="date" id="recurring-date" class="field-input">
+      </div>
       <button type="submit" class="btn-primary">إضافة</button>
     </form>
   </div>
