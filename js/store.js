@@ -24,13 +24,13 @@ const Store = (() => {
   };
 
   const DEFAULT_CATEGORIES = [
-    { id: 'home',   name: 'بيت',      icon: '🏠', color: '#0ea5e9' },
-    { id: 'car',    name: 'سيارة',    icon: '🚗', color: '#f59e0b' },
-    { id: 'food',   name: 'أكل',      icon: '🍽️', color: '#ef4444' },
-    { id: 'shop',   name: 'تسوق',     icon: '🛍️', color: '#a855f7' },
-    { id: 'health', name: 'صحة',      icon: '💊', color: '#10b981' },
-    { id: 'phone',  name: 'اتصالات',  icon: '📱', color: '#6366f1' },
-    { id: 'other',  name: 'أخرى',     icon: '📦', color: '#64748b' },
+    { id: 'home',   name: 'بيت',      icon: 'home',   color: '#0ea5e9' },
+    { id: 'car',    name: 'سيارة',    icon: 'car',    color: '#f59e0b' },
+    { id: 'food',   name: 'أكل',      icon: 'food',   color: '#ef4444' },
+    { id: 'shop',   name: 'تسوق',     icon: 'shop',   color: '#a855f7' },
+    { id: 'health', name: 'صحة',      icon: 'health', color: '#10b981' },
+    { id: 'phone',  name: 'اتصالات',  icon: 'phone',  color: '#6366f1' },
+    { id: 'other',  name: 'أخرى',     icon: 'box',    color: '#64748b' },
   ];
 
   function load(key, fallback) {

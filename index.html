@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <title>مصاريفي</title>
   <meta name="description" content="تطبيق بسيط وجميل لتسجيل وتنظيم مصاريفك">
-  <meta name="theme-color" content="#0d9488" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#101418" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f3eee3" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0a0f14" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="مصاريفي">
@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -25,8 +25,9 @@
     <header class="hero">
       <button class="hero-eye" id="btn-hide-amounts" aria-label="إخفاء المبالغ">👁</button>
       <p class="hero-label">مصاريف <span id="home-month-name"></span></p>
-      <h1 class="hero-total" id="home-total">0 ر.س</h1>
+      <h1 class="hero-total" id="home-total">0</h1>
       <p class="hero-sub" id="home-count"></p>
+      <div class="hero-cycle" id="home-cycle" aria-hidden="true"><span></span></div>
       <p class="hero-compare hidden" id="home-compare"></p>
       <div class="hero-net hidden" id="home-net">
         <span class="net-item"><small>الدخل</small><b id="home-income">0</b></span>
@@ -125,10 +126,10 @@
       <div class="setting-card">
         <p class="setting-label">المظهر</p>
         <div class="theme-row">
-          <button class="theme-swatch" data-theme="teal" style="--sw:#0f9e8f" aria-label="تركوازي"></button>
-          <button class="theme-swatch" data-theme="royal" style="--sw:#7c5cff" aria-label="بنفسجي"></button>
-          <button class="theme-swatch" data-theme="gold" style="--sw:#c08a2d" aria-label="ذهبي"></button>
-          <button class="theme-swatch" data-theme="ocean" style="--sw:#2470e8" aria-label="أزرق"></button>
+          <button class="theme-swatch" data-theme="teal" style="--sw:linear-gradient(140deg,#2fd3b3,#0c6f5c)" aria-label="يشم"></button>
+          <button class="theme-swatch" data-theme="royal" style="--sw:linear-gradient(140deg,#9a8cff,#4b3ec2)" aria-label="نيلي"></button>
+          <button class="theme-swatch" data-theme="gold" style="--sw:linear-gradient(140deg,#e6c476,#8f6a22)" aria-label="نحاسي"></button>
+          <button class="theme-swatch" data-theme="ocean" style="--sw:linear-gradient(140deg,#58a0ff,#1a4fa8)" aria-label="فولاذي"></button>
         </div>
         <div class="kind-toggle mode-toggle" id="mode-toggle">
           <button type="button" class="kind-btn" data-modeval="auto">تلقائي</button>
@@ -262,7 +263,7 @@
       </div>
       <div class="amount-wrap">
         <input type="text" inputmode="decimal" id="expense-amount" class="amount-input" placeholder="0" autocomplete="off" required>
-        <span class="amount-currency">ر.س</span>
+        <span class="amount-currency"><svg class="sar" viewBox="0 0 1124.14 1256.39" fill="currentColor" aria-label="ريال"><path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/><path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"/></svg></span>
       </div>
       <label class="field-label" id="expense-cat-label">الفئة</label>
       <div id="expense-categories" class="chip-row"></div>
@@ -303,7 +304,7 @@
       <label class="field-label" for="category-budget">ميزانية شهرية <small>(اختياري)</small></label>
       <div class="amount-wrap amount-wrap-sm">
         <input type="text" inputmode="decimal" id="category-budget" class="amount-input amount-input-sm" placeholder="بدون حد" autocomplete="off">
-        <span class="amount-currency">ر.س</span>
+        <span class="amount-currency"><svg class="sar" viewBox="0 0 1124.14 1256.39" fill="currentColor" aria-label="ريال"><path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/><path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"/></svg></span>
       </div>
       <p class="setting-hint hidden" id="budget-hint"></p>
       <div class="sheet-actions">
@@ -359,7 +360,7 @@
       <label class="field-label">مصروف متكرر جديد</label>
       <div class="amount-wrap amount-wrap-sm">
         <input type="text" inputmode="decimal" id="recurring-amount" class="amount-input amount-input-sm" placeholder="المبلغ" autocomplete="off">
-        <span class="amount-currency">ر.س</span>
+        <span class="amount-currency"><svg class="sar" viewBox="0 0 1124.14 1256.39" fill="currentColor" aria-label="ريال"><path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/><path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"/></svg></span>
       </div>
       <div id="recurring-categories" class="chip-row"></div>
       <input type="text" id="recurring-note" class="field-input" placeholder="الوصف (مثال: إيجار الشقة)" maxlength="40">

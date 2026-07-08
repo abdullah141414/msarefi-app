@@ -21,8 +21,66 @@
   const TAB_ORDER = ['home', 'stats', 'record', 'categories'];
   let activeView = 'home';
 
-  const CATEGORY_ICONS = ['🏠','🚗','🍽️','🛍️','💊','📱','👕','🎓','✈️','⚽','🎮','☕','⛽','🧾','🎁','💇','🐈','🕌','💼','📦'];
+  // طقم أيقونات خطية موحّد (SVG) — يُصبغ بلون الفئة، ويشتغل أوفلاين على كل جهاز
+  const CAT_ICON_PATHS = {
+    home:      '<path d="M3 10.7 12 4l9 6.7"/><path d="M5 9.6V20h14V9.6"/><path d="M10 20v-5h4v5"/>',
+    car:       '<path d="M4 12.2l1.7-4.5A2.4 2.4 0 0 1 8 6h8a2.4 2.4 0 0 1 2.3 1.7L20 12.2"/><path d="M3.2 12.2h17.6v4.3a1 1 0 0 1-1 1h-1.3"/><path d="M6.5 17.5H4.2a1 1 0 0 1-1-1v-4.3"/><path d="M9 17.5h6"/><circle cx="7.3" cy="17.4" r="1.6"/><circle cx="16.7" cy="17.4" r="1.6"/>',
+    food:      '<path d="M3.4 11.4h17.2"/><path d="M5.2 11.4a6.8 6.8 0 0 0 13.6 0"/><path d="M9.8 4.6c-.9 1-.9 2 0 3"/><path d="M14.2 4.6c-.9 1-.9 2 0 3"/>',
+    shop:      '<path d="M6.4 8h11.2l-1 11.5a1 1 0 0 1-1 .9H8.4a1 1 0 0 1-1-.9z"/><path d="M9.4 8V6.6a2.6 2.6 0 0 1 5.2 0V8"/>',
+    health:    '<path d="M12 20.2s-6.7-4.1-6.7-9.1a3.6 3.6 0 0 1 6.7-1.8 3.6 3.6 0 0 1 6.7 1.8c0 5-6.7 9.1-6.7 9.1z"/>',
+    phone:     '<rect x="7" y="3" width="10" height="18" rx="2.6"/><path d="M10.5 18h3"/>',
+    clothes:   '<path d="M8.2 3.6 4.6 6.1l1.9 3.1L8.4 8v11.4h7.2V8l1.9 1.2 1.9-3.1-3.6-2.5-1.7 1.8a2.9 2.9 0 0 1-4.2 0z"/>',
+    education: '<path d="M2.6 9 12 5l9.4 4-9.4 4z"/><path d="M6.6 11.2v4.3c0 1.2 2.5 2.3 5.4 2.3s5.4-1.1 5.4-2.3v-4.3"/><path d="M21.4 9.2v4.8"/>',
+    travel:    '<path d="M21.4 3 11 13.4"/><path d="M21.4 3 14.8 21 11 13.4 3.4 9.6z"/>',
+    sports:    '<circle cx="12" cy="12" r="8.2"/><path d="M4.6 9.4c3.5 2.4 11.3 2.4 14.8 0"/><path d="M4.6 14.6c3.5-2.4 11.3-2.4 14.8 0"/><path d="M12 3.8v16.4"/>',
+    games:     '<path d="M8.8 8h6.4a5 5 0 0 1 5 5.2 2.9 2.9 0 0 1-5.4 1.4l-.4-.6H9.6l-.4.6A2.9 2.9 0 0 1 3.8 13.2 5 5 0 0 1 8.8 8z"/><path d="M7.6 11.5v2"/><path d="M6.6 12.5h2"/><circle cx="15.4" cy="11.8" r=".7"/><circle cx="17" cy="13.4" r=".7"/>',
+    coffee:    '<path d="M5.4 8.6h11.2v4.4a4.4 4.4 0 0 1-4.4 4.4h-2.4a4.4 4.4 0 0 1-4.4-4.4z"/><path d="M16.6 9.6h1.6a2 2 0 0 1 0 4h-1.6"/><path d="M8.2 3.8v1.8"/><path d="M11.2 3.8v1.8"/><path d="M5 20.2h11.6"/>',
+    fuel:      '<path d="M5 20.4V6.2a2 2 0 0 1 2-2h4.6a2 2 0 0 1 2 2v14.2"/><path d="M4 20.4h10.6"/><path d="M5 12.2h8.6"/><path d="M13.6 8l2.4 2.4a1.8 1.8 0 0 1 .5 1.3v5.1a1.5 1.5 0 0 0 3 0V10.6L17.6 8"/>',
+    bill:      '<path d="M6.4 3.6h11.2v16.8l-2.2-1.4-2.3 1.4-2.3-1.4-2.2 1.4z"/><path d="M9.4 8h5.2"/><path d="M9.4 11.6h5.2"/>',
+    gift:      '<rect x="4.4" y="9" width="15.2" height="11.2" rx="1.2"/><path d="M4.4 13.2h15.2"/><path d="M12 9v11.2"/><path d="M12 9C10.4 9 8.5 8.4 8.5 6.8S10.9 4.4 12 6.6c1.1-2.2 3.5-1.4 3.5.2S13.6 9 12 9z"/>',
+    haircut:   '<circle cx="6" cy="7" r="2.3"/><circle cx="6" cy="17" r="2.3"/><path d="M8 8.4 20 16.2"/><path d="M8 15.6 20 7.8"/><path d="M8.2 9.6 12.4 12"/>',
+    pet:       '<circle cx="8.4" cy="9" r="1.6"/><circle cx="15.6" cy="9" r="1.6"/><circle cx="5.4" cy="13" r="1.4"/><circle cx="18.6" cy="13" r="1.4"/><path d="M12 12.4c2.6 0 4.6 2.4 4.6 4.4a2.3 2.3 0 0 1-4.6.2 2.3 2.3 0 0 1-4.6-.2c0-2 2-4.4 4.6-4.4z"/>',
+    mosque:    '<path d="M5 20.2v-6"/><path d="M19 20.2v-6"/><path d="M5 14.2a7 7 0 0 1 14 0"/><path d="M12 3.4c1.4 1.3 1.8 2.3 0 3.7-1.8-1.4-1.4-2.4 0-3.7z"/><path d="M12 7.1v3"/><path d="M3.4 20.2h17.2"/>',
+    work:      '<rect x="3.4" y="7.4" width="17.2" height="11.6" rx="2"/><path d="M8.4 7.4V6a2 2 0 0 1 2-2h3.2a2 2 0 0 1 2 2v1.4"/><path d="M3.4 12.4h17.2"/>',
+    box:       '<path d="M4 8 12 4l8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4"/><path d="M12 12v8"/>',
+    tag:       '<path d="M4 4h7l9 9-7 7-9-9z"/><circle cx="8" cy="8" r="1.4"/>',
+  };
+  const CATEGORY_ICONS = Object.keys(CAT_ICON_PATHS);
   const CATEGORY_COLORS = ['#0ea5e9','#f59e0b','#ef4444','#a855f7','#10b981','#6366f1','#ec4899','#f97316','#14b8a6','#64748b'];
+
+  // خريطة ترحيل: الإيموجي القديم → مفتاح الأيقونة الجديد
+  const EMOJI_TO_ICON = { '🏠':'home','🚗':'car','🍽️':'food','🍽':'food','🛍️':'shop','🛍':'shop','💊':'health','📱':'phone','👕':'clothes','🎓':'education','✈️':'travel','✈':'travel','⚽':'sports','🎮':'games','☕':'coffee','⛽':'fuel','🧾':'bill','🎁':'gift','💇':'haircut','🐈':'pet','🕌':'mosque','💼':'work','📦':'box' };
+
+  // يرجع أيقونة الفئة كـ SVG مصبوغ بلونها (أو الإيموجي كما هو لو غير معروف — توافق خلفي)
+  function catIcon(key, color) {
+    const p = CAT_ICON_PATHS[key];
+    if (!p) return escapeHtml(key || '');
+    const style = color ? ` style="color:${color}"` : '';
+    return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"${style}>${p}</svg>`;
+  }
+
+  // أيقونات واجهة خطية (للرؤى الذكية) — تُصبغ بلون الثيم
+  const UI_ICON_PATHS = {
+    calendar: '<rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M4 9.5h16"/><path d="M8 3.4v3"/><path d="M16 3.4v3"/><path d="M8 13h2.5"/><path d="M13.5 13H16"/><path d="M8 17h2.5"/>',
+    cash:     '<rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9v6"/><path d="M17.5 9v6"/>',
+    chart:    '<path d="M4 4v16h16"/><rect x="7" y="12" width="2.6" height="5.4" rx=".8"/><rect x="11.5" y="8.6" width="2.6" height="8.8" rx=".8"/><rect x="16" y="14" width="2.6" height="3.4" rx=".8"/>',
+    repeat:   '<path d="M4 9.5a5 5 0 0 1 5-5h7"/><path d="M13.5 1.8 16.8 4.5 13.5 7.2"/><path d="M20 14.5a5 5 0 0 1-5 5H8"/><path d="M10.5 22.2 7.2 19.5 10.5 16.8"/>',
+  };
+  function uiIcon(name) {
+    const p = UI_ICON_PATHS[name];
+    if (!p) return '';
+    return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary)">${p}</svg>`;
+  }
+
+  // ترحيل لمرة واحدة: تحويل أيقونات الفئات من إيموجي قديم إلى مفاتيح SVG
+  (function migrateCategoryIcons() {
+    let changed = false;
+    categories.forEach((c) => {
+      if (c.icon && EMOJI_TO_ICON[c.icon]) { c.icon = EMOJI_TO_ICON[c.icon]; changed = true; }
+      else if (c.icon && !CAT_ICON_PATHS[c.icon]) { c.icon = 'tag'; changed = true; }
+    });
+    if (changed) Store.setCategories(categories);
+  })();
 
   // ===== أدوات =====
   const $ = (id) => document.getElementById(id);
@@ -43,9 +101,18 @@
 
   function digitChars() { return settings.arabicDigits ? [...'٠١٢٣٤٥٦٧٨٩'] : [...'0123456789']; }
 
+  // رمز الريال السعودي الرسمي (SAMA 2025) — SVG مضمّن ليعمل بدون إنترنت وبنفس الشكل على كل جهاز
+  const SAR_SVG = '<svg class="sar" viewBox="0 0 1124.14 1256.39" fill="currentColor" aria-hidden="true"><path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/><path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"/></svg>';
+
+  // نص فقط (للتنبيهات وقارئ الشاشة والصور)
   function money(n) {
     if (settings.hideAmounts) return '••••';
     return `${fmtMoney.format(n)} ر.س`;
+  }
+  // HTML مع رمز الريال المرسوم (لعروض المبالغ)
+  function moneyH(n) {
+    if (settings.hideAmounts) return '••••';
+    return `${fmtMoney.format(n)} ${SAR_SVG}`;
   }
 
   function applyAppearance() {
@@ -127,7 +194,7 @@
   // الحركة كلها CSS transform — ناعمة تماماً وبدون أي اهتزاز نصي.
   function countUp(el, to) {
     if (!el) return;
-    if (reduceMotion || to <= 0 || settings.hideAmounts) { el.textContent = money(to); return; }
+    if (reduceMotion || to <= 0 || settings.hideAmounts) { el.innerHTML = moneyH(to); return; }
 
     const digits = digitChars();
     const finalStr = fmtMoney.format(to);
@@ -160,7 +227,7 @@
     }
 
     el.appendChild(wrap);
-    el.appendChild(document.createTextNode(' ر.س'));
+    el.insertAdjacentHTML('beforeend', ' ' + SAR_SVG);
 
     // إطاران حتى يرسم المتصفح وضعية الصفر ثم تبدأ اللفة
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -233,7 +300,7 @@
 
     if (!reduceMotion) {
       void view.offsetWidth; // إعادة تدفّق لإعادة تشغيل الحركة
-      view.style.setProperty('--nav-dir', forward ? '1' : '-1');
+      view.style.setProperty('--nav-dir', forward ? '-1' : '1'); // RTL: الصفحة التالية تدخل من اليسار
       view.classList.add('nav-in');
       // شبكة أمان: نضمن زوال الصنف والخاصية حتى لو انقطعت الحركة لأي سبب
       clearTimeout(navInTimer);
@@ -283,8 +350,8 @@
       }
       curDx = dx;
       const idx = TAB_ORDER.indexOf(activeView);
-      // مقاومة عند طرفي القائمة (ما فيه صفحة أبعد بهذا الاتجاه)
-      const atEdge = (dx < 0 && idx === TAB_ORDER.length - 1) || (dx > 0 && idx === 0);
+      // مقاومة عند طرفي القائمة (RTL: السحب لليمين = التالي، لليسار = السابق)
+      const atEdge = (dx > 0 && idx === TAB_ORDER.length - 1) || (dx < 0 && idx === 0);
       const eff = atEdge ? dx * 0.25 : dx;
       dragView.style.transform = `translateX(${Math.max(-130, Math.min(130, eff))}px)`;
     }, { passive: true });
@@ -292,8 +359,9 @@
     function endDrag() {
       if (!dragging) { tracking = false; return; }
       const idx = TAB_ORDER.indexOf(activeView);
-      const goNext = curDx <= -55 && idx < TAB_ORDER.length - 1;
-      const goPrev = curDx >= 55 && idx > 0;
+      // RTL: السحب لليمين (curDx موجب) ينقل للصفحة التالية، ولليسار للسابقة
+      const goNext = curDx >= 55 && idx < TAB_ORDER.length - 1;
+      const goPrev = curDx <= -55 && idx > 0;
       const view = dragView;
       tracking = false; dragging = false; dragView = null;
 
@@ -306,7 +374,7 @@
 
       view.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1)';
       if (goNext || goPrev) {
-        view.style.transform = `translateX(${goNext ? -130 : 130}px)`;
+        view.style.transform = `translateX(${goNext ? 130 : -130}px)`;
         const target = goNext ? TAB_ORDER[idx + 1] : TAB_ORDER[idx - 1];
         setTimeout(() => {
           view.style.transition = '';
@@ -513,21 +581,12 @@
     const key = currentCycleKey();
     const spendList = onlyExpenses(expensesOfCycle(key));
     const spend = sum(spendList);
-    const { totalDays, elapsed } = cycleProgress(key);
+    const { elapsed } = cycleProgress(key);
     const cards = [];
 
     if (spend > 0 && elapsed >= 3) {
-      // توقع نهاية الشهر
-      const projected = (spend / elapsed) * totalDays;
-      const incomeTotal = sum(onlyIncome(expensesOfCycle(key)));
-      const over = incomeTotal > 0 && projected > incomeTotal;
-      cards.push({
-        icon: over ? '⚠️' : '🔮',
-        warn: over,
-        text: `متوقع نهاية الشهر: <b>${money(projected)}</b>${over ? ' — أعلى من دخلك!' : ''}`,
-      });
       // متوسط الصرف اليومي
-      cards.push({ icon: '📅', text: `متوسط صرفك اليومي: <b>${money(spend / elapsed)}</b>` });
+      cards.push({ icon: uiIcon('calendar'), text: `متوسط صرفك اليومي: <b>${moneyH(spend / elapsed)}</b>` });
     }
 
     // أعلى فئة مقارنة بمتوسطها
@@ -541,7 +600,7 @@
         const pct = Math.round(Math.abs(topSpend - avg) / avg * 100);
         const up = topSpend > avg;
         cards.push({
-          icon: cat.icon,
+          icon: catIcon(cat.icon, cat.color),
           warn: up,
           text: `صرفك على «${escapeHtml(cat.name)}» ${up ? 'أعلى' : 'أقل'} <b>${fmtMoney.format(pct)}٪</b> من متوسطك`,
         });
@@ -552,8 +611,8 @@
     if (spendList.length >= 2) {
       const biggest = spendList.reduce((a, b) => (b.amount > a.amount ? b : a));
       cards.push({
-        icon: '💸',
-        text: `أكبر عملية: <b>${money(biggest.amount)}</b>${biggest.note ? ` عند ${escapeHtml(biggest.note)}` : ''}`,
+        icon: uiIcon('cash'),
+        text: `أكبر عملية: <b>${moneyH(biggest.amount)}</b>${biggest.note ? ` عند ${escapeHtml(biggest.note)}` : ''}`,
       });
     }
 
@@ -567,7 +626,7 @@
       });
       const top = byDow.indexOf(Math.max(...byDow));
       const names = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-      cards.push({ icon: '📈', text: `أكثر يوم تصرف فيه: <b>${names[top]}</b>` });
+      cards.push({ icon: uiIcon('chart'), text: `أكثر يوم تصرف فيه: <b>${names[top]}</b>` });
     }
 
     return cards.slice(0, 4);
@@ -621,8 +680,8 @@
     box.classList.toggle('hidden', !sub);
     if (!sub) return;
     box.innerHTML = `
-      <span class="insight-icon">🔁</span>
-      <p>يبدو أن <b>${escapeHtml(sub.name)}</b> اشتراك شهري (~${money(sub.amount)}) — أضيفه للمتكررة؟</p>
+      <span class="insight-icon">${uiIcon('repeat')}</span>
+      <p>يبدو أن <b>${escapeHtml(sub.name)}</b> اشتراك شهري (~${moneyH(sub.amount)}) — أضيفه للمتكررة؟</p>
       <span class="sub-actions">
         <button class="sub-add">أضف</button>
         <button class="sub-dismiss">تجاهل</button>
@@ -670,7 +729,7 @@
 
     homeSpendTotal = spendTotal;
     $('home-month-name').textContent = cycleLabel(key);
-    $('home-total').textContent = money(spendTotal);
+    $('home-total').innerHTML = moneyH(spendTotal);
     $('home-count').textContent = spendList.length
       ? `${fmtMoney.format(spendList.length)} ${spendList.length === 1 ? 'مصروف' : 'مصاريف'} هذا الشهر`
       : 'ما سجّلت شي هذا الشهر بعد';
@@ -679,16 +738,21 @@
     const hasIncome = incomeList.length > 0;
     $('home-net').classList.toggle('hidden', !hasIncome);
     if (hasIncome) {
-      $('home-income').textContent = money(incomeTotal);
+      $('home-income').innerHTML = moneyH(incomeTotal);
       const net = incomeTotal - spendTotal;
       const netEl = $('home-netval');
-      netEl.textContent = money(net);
+      netEl.innerHTML = moneyH(net);
       netEl.classList.toggle('net-negative', net < 0);
     }
+
+    // خط تقدّم دورة الراتب تحت الواجهة
+    const { totalDays } = cycleProgress(key);
 
     // مقارنة بنفس الفترة من الدورة الماضية
     const cmp = $('home-compare');
     const { start, elapsed } = cycleProgress(key);
+    const cycleFill = $('home-cycle').firstElementChild;
+    if (cycleFill) cycleFill.style.width = `${Math.round((elapsed / totalDays) * 100)}%`;
     const prevKey = shiftCycle(key, -1);
     const prevStart = cycleBounds(prevKey).start;
     const prevCut = new Date(prevStart); prevCut.setDate(prevCut.getDate() + elapsed);
@@ -713,7 +777,7 @@
       const reached = saved >= settings.savingsGoal;
       goalBox.classList.remove('hidden');
       goalBox.innerHTML = `
-        <div class="goal-top"><span>🎯 هدف الادخار</span><b>${money(saved)} من ${money(settings.savingsGoal)}</b></div>
+        <div class="goal-top"><span>🎯 هدف الادخار</span><b>${moneyH(saved)} من ${moneyH(settings.savingsGoal)}</b></div>
         <div class="goal-bar"><span style="width:${pct.toFixed(1)}%"></span></div>
         ${reached ? '<p class="goal-done">حققت هدفك! 🎉</p>' : ''}`;
     } else {
@@ -735,7 +799,7 @@
       card.className = 'category-card';
       card.style.setProperty('--cat-color', cat.color);
       // حلقة تقدم الميزانية حول الأيقونة
-      let iconHtml = `<span class="cat-icon">${cat.icon}</span>`;
+      let iconHtml = `<span class="cat-icon">${catIcon(cat.icon, cat.color)}</span>`;
       let budgetText = '';
       if (budget) {
         const pct = Math.min(1, total / budget);
@@ -749,14 +813,14 @@
                 stroke-linecap="round" stroke-dasharray="${(pct * C).toFixed(1)} ${C.toFixed(1)}"
                 transform="rotate(-90 30 30)"></circle>
             </svg>
-            <span class="cat-icon">${cat.icon}</span>
+            <span class="cat-icon">${catIcon(cat.icon, cat.color)}</span>
           </span>`;
-        budgetText = `<span class="cat-budget-text${over ? ' over' : ''}">${over ? 'تجاوزت' : 'من'} ${money(budget)}</span>`;
+        budgetText = `<span class="cat-budget-text${over ? ' over' : ''}">${over ? 'تجاوزت' : 'من'} ${moneyH(budget)}</span>`;
       }
       card.innerHTML = `
         ${iconHtml}
         <span class="cat-name">${escapeHtml(cat.name)}</span>
-        <span class="cat-total">${money(total)}</span>
+        <span class="cat-total">${moneyH(total)}</span>
         ${budgetText}`;
       card.addEventListener('click', () => openExpenseSheet(null, cat.id));
       grid.appendChild(card);
@@ -781,7 +845,7 @@
     box.classList.toggle('hidden', !recordCatFilter);
     if (recordCatFilter) {
       const cat = catById(recordCatFilter);
-      box.innerHTML = `<span class="filter-chip" style="--chip-color:${cat.color}">${cat.icon} ${escapeHtml(cat.name)} <b>✕</b></span>`;
+      box.innerHTML = `<span class="filter-chip" style="--chip-color:${cat.color}">${catIcon(cat.icon, cat.color)} ${escapeHtml(cat.name)} <b>✕</b></span>`;
       box.querySelector('.filter-chip').addEventListener('click', () => {
         recordCatFilter = null;
         renderRecord();
@@ -839,7 +903,7 @@
       .sort((a, b) => b.date.localeCompare(a.date));
 
     const spendTotal = sum(onlyExpenses(cycleItems));
-    $('record-total').textContent = cycleItems.length ? `المصاريف: ${money(spendTotal)}` : '';
+    $('record-total').innerHTML = cycleItems.length ? `المصاريف: ${moneyH(spendTotal)}` : '';
     $('record-empty').classList.toggle('hidden', cycleItems.length > 0);
 
     const list = $('record-list');
@@ -885,18 +949,18 @@
               ${e.note ? `<span class="expense-note">${escapeHtml(e.note)}</span>` : ''}
             </span>
             ${cardChip}
-            <span class="expense-amount income-amount">+${money(e.amount)}</span>`;
+            <span class="expense-amount income-amount">+${moneyH(e.amount)}</span>`;
         } else {
           const cat = catById(e.categoryId);
           row.style.setProperty('--item-color', cat.color);
           row.innerHTML = `
-            <span class="expense-icon">${cat.icon}</span>
+            <span class="expense-icon">${catIcon(cat.icon, cat.color)}</span>
             <span class="expense-info">
               <span class="expense-cat">${escapeHtml(cat.name)}</span>
               ${e.note ? `<span class="expense-note">${escapeHtml(e.note)}</span>` : ''}
             </span>
             ${cardChip}
-            <span class="expense-amount">${money(e.amount)}</span>`;
+            <span class="expense-amount">${moneyH(e.amount)}</span>`;
         }
         row.addEventListener('click', () => {
           if (openSwipeRow === row) { row.style.transform = ''; openSwipeRow = null; return; }
@@ -941,7 +1005,7 @@
     // الدائرة والإجمالي
     const breakdown = Stats.categoryBreakdown(cycleExpenses, categories);
     $('stats-donut').innerHTML = Stats.donutSVG(breakdown);
-    $('donut-total').textContent = money(total);
+    $('donut-total').innerHTML = moneyH(total);
 
     // قائمة الفئات المرتبة
     const bd = $('stats-breakdown');
@@ -950,11 +1014,11 @@
       const item = document.createElement('button');
       item.className = 'breakdown-row';
       item.innerHTML = `
-        <span class="bd-icon" style="--item-color:${row.cat.color}">${row.cat.icon}</span>
+        <span class="bd-icon" style="--item-color:${row.cat.color}">${catIcon(row.cat.icon, row.cat.color)}</span>
         <div class="bd-main">
           <div class="bd-top">
             <span class="bd-name">${escapeHtml(row.cat.name)}</span>
-            <span class="bd-amount">${money(row.total)}</span>
+            <span class="bd-amount">${moneyH(row.total)}</span>
           </div>
           <div class="bd-bar"><span style="width:${row.pct.toFixed(1)}%;background:${row.cat.color}"></span></div>
         </div>
@@ -995,7 +1059,7 @@
         row.innerHTML = `
           <span class="merchant-rank">${fmtMoney.format(i + 1)}</span>
           <span class="merchant-name">${escapeHtml(m.name)}</span>
-          <span class="merchant-amount">${money(m.total)}</span>`;
+          <span class="merchant-amount">${moneyH(m.total)}</span>`;
         ml.appendChild(row);
       });
     }
@@ -1049,7 +1113,7 @@
       chip.type = 'button';
       chip.className = 'chip' + (cat.id === selectedCategoryId ? ' selected' : '');
       chip.style.setProperty('--chip-color', cat.color);
-      chip.innerHTML = `${cat.icon} ${escapeHtml(cat.name)}`;
+      chip.innerHTML = `${catIcon(cat.icon, cat.color)} ${escapeHtml(cat.name)}`;
       chip.addEventListener('click', () => {
         selectedCategoryId = cat.id;
         manualCatPick = true;
@@ -1200,7 +1264,7 @@
       row.className = 'category-row';
       row.style.setProperty('--item-color', cat.color);
       row.innerHTML = `
-        <span class="expense-icon" style="--item-color:${cat.color}">${cat.icon}</span>
+        <span class="expense-icon" style="--item-color:${cat.color}">${catIcon(cat.icon, cat.color)}</span>
         <span class="row-name">${escapeHtml(cat.name)}</span>
         <span class="row-count">${count ? `${fmtMoney.format(count)} مصروف` : ''}</span>
         <span class="row-chevron">‹</span>`;
@@ -1216,7 +1280,7 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'icon-option' + (icon === selectedIcon ? ' selected' : '');
-      btn.textContent = icon;
+      btn.innerHTML = catIcon(icon, selectedColor);
       btn.addEventListener('click', () => { selectedIcon = icon; renderIconPicker(); });
       row.appendChild(btn);
     });
@@ -1231,7 +1295,7 @@
       btn.className = 'color-option' + (color === selectedColor ? ' selected' : '');
       btn.style.background = color;
       btn.setAttribute('aria-label', color);
-      btn.addEventListener('click', () => { selectedColor = color; renderColorPicker(); });
+      btn.addEventListener('click', () => { selectedColor = color; renderColorPicker(); renderIconPicker(); });
       row.appendChild(btn);
     });
   }
@@ -1253,7 +1317,7 @@
     hint.classList.toggle('hidden', !avg);
     if (avg) {
       const suggested = Math.ceil(avg / 50) * 50; // تقريب لأقرب 50
-      hint.innerHTML = `متوسط صرفك: ${money(avg)} — <button type="button" class="hint-use">اقترح ${money(suggested)}</button>`;
+      hint.innerHTML = `متوسط صرفك: ${moneyH(avg)} — <button type="button" class="hint-use">اقترح ${moneyH(suggested)}</button>`;
       hint.querySelector('.hint-use').addEventListener('click', () => {
         $('category-budget').value = String(suggested);
       });
@@ -1491,7 +1555,7 @@
       row.className = 'learned-row';
       row.innerHTML = `
         <span class="learned-name">${escapeHtml(name)}</span>
-        <span class="learned-cat" style="--item-color:${cat.color}">${cat.icon} ${escapeHtml(cat.name)}</span>
+        <span class="learned-cat" style="--item-color:${cat.color}">${catIcon(cat.icon, cat.color)} ${escapeHtml(cat.name)}</span>
         <button class="learned-del" aria-label="حذف">✕</button>`;
       row.querySelector('.learned-del').addEventListener('click', () => {
         Store.forgetMerchant(name);
@@ -1514,7 +1578,7 @@
       chip.type = 'button';
       chip.className = 'chip' + (cat.id === recurringCategoryId ? ' selected' : '');
       chip.style.setProperty('--chip-color', cat.color);
-      chip.innerHTML = `${cat.icon} ${escapeHtml(cat.name)}`;
+      chip.innerHTML = `${catIcon(cat.icon, cat.color)} ${escapeHtml(cat.name)}`;
       chip.addEventListener('click', () => { recurringCategoryId = cat.id; renderRecurringChips(); });
       row.appendChild(chip);
     });
@@ -1544,10 +1608,10 @@
       const row = document.createElement('div');
       row.className = 'learned-row';
       row.innerHTML = `
-        <span class="learned-cat" style="--item-color:${cat.color}">${cat.icon}</span>
+        <span class="learned-cat" style="--item-color:${cat.color}">${catIcon(cat.icon, cat.color)}</span>
         <span class="recurring-info">
           <b>${escapeHtml(r.note || cat.name)}</b>
-          <small>${money(r.amount)} · ${recurringLabel(r)}</small>
+          <small>${moneyH(r.amount)} · ${recurringLabel(r)}</small>
         </span>
         <button class="learned-del" aria-label="حذف">✕</button>`;
       row.querySelector('.learned-del').addEventListener('click', () => {
@@ -1801,8 +1865,11 @@
     ctx.font = '600 40px "IBM Plex Sans Arabic", sans-serif';
     breakdown.forEach((row) => {
       ctx.textAlign = 'right';
+      // نقطة ملوّنة بلون الفئة بدل الأيقونة
+      ctx.fillStyle = row.cat.color;
+      ctx.beginPath(); ctx.arc(966, y - 13, 13, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff';
-      ctx.fillText(`${row.cat.icon} ${row.cat.name}`, 980, y);
+      ctx.fillText(row.cat.name, 936, y);
       ctx.textAlign = 'left';
       ctx.fillText(`${fmtMoney.format(row.total)} ر.س`, 100, y);
       // شريط
