@@ -285,6 +285,14 @@
 
   // ===== التنقل بين العروض (تبويب أو سحب) =====
   // انتقال واحد خفيف واتجاهي — بلا تراكم حركات وبلا رمشة
+  // أثناء التنقّل: نرفع العرض لطبقة GPU ونوقف أنميشن الواجهة اللحظي حتى ينزلق بسلاسة بلا إعادة رسم
+  let navBusyTimer;
+  function markNavBusy(ms = 380) {
+    document.body.classList.add('nav-busy');
+    clearTimeout(navBusyTimer);
+    navBusyTimer = setTimeout(() => document.body.classList.remove('nav-busy'), ms);
+  }
+
   let navInTimer;
   function goToView(viewName) {
     if (!TAB_ORDER.includes(viewName) || viewName === activeView) return;
@@ -292,13 +300,14 @@
     activeView = viewName;
 
     document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === viewName));
-    document.querySelectorAll('.view').forEach((v) => { v.classList.remove('active', 'nav-in'); v.style.transform = ''; v.style.transition = ''; });
+    document.querySelectorAll('.view').forEach((v) => { v.classList.remove('active', 'nav-in'); v.style.transform = ''; v.style.transition = ''; v.style.willChange = ''; });
     const view = $(`view-${viewName}`);
     view.classList.add('active');
     window.scrollTo(0, 0);
     renderAll();
 
     if (!reduceMotion) {
+      markNavBusy();
       void view.offsetWidth; // إعادة تدفّق لإعادة تشغيل الحركة
       view.style.setProperty('--nav-dir', forward ? '-1' : '1'); // RTL: الصفحة التالية تدخل من اليسار
       view.classList.add('nav-in');
@@ -347,6 +356,8 @@
         dragging = true;
         dragView = $(`view-${activeView}`);
         dragView.style.transition = 'none';
+        dragView.style.willChange = 'transform'; // رفع لطبقة GPU طوال السحب
+        document.body.classList.add('nav-busy');  // أوقف رسم أنميشن الواجهة أثناء السحب
       }
       curDx = dx;
       const idx = TAB_ORDER.indexOf(activeView);
@@ -366,12 +377,14 @@
       tracking = false; dragging = false; dragView = null;
 
       if (reduceMotion) {
-        view.style.transition = ''; view.style.transform = '';
+        view.style.transition = ''; view.style.transform = ''; view.style.willChange = '';
+        document.body.classList.remove('nav-busy');
         if (goNext) goToView(TAB_ORDER[idx + 1]);
         else if (goPrev) goToView(TAB_ORDER[idx - 1]);
         return;
       }
 
+      markNavBusy(520); // يبقى الرفع والإيقاف حتى يكتمل الانزلاق ودخول الصفحة الجديدة
       view.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1)';
       if (goNext || goPrev) {
         view.style.transform = `translateX(${goNext ? 130 : -130}px)`;
@@ -383,7 +396,7 @@
         }, 190);
       } else {
         view.style.transform = 'translateX(0)';
-        setTimeout(() => { view.style.transition = ''; view.style.transform = ''; }, 220);
+        setTimeout(() => { view.style.transition = ''; view.style.transform = ''; view.style.willChange = ''; }, 220);
       }
     }
 

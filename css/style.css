@@ -147,7 +147,13 @@ button {
   from { opacity: 0; transform: translateX(calc(var(--nav-dir, 1) * 16px)); }
   to   { opacity: 1; transform: none; }
 }
-.view.nav-in { animation: nav-slide .24s cubic-bezier(.22, 1, .36, 1) both; }
+.view.nav-in { animation: nav-slide .24s cubic-bezier(.22, 1, .36, 1) both; will-change: transform, opacity; }
+
+/* أثناء التنقّل (سحب أو تبويب): ارفع العرض لطبقة GPU وأوقف أنميشن الواجهة اللحظي
+   حتى ينزلق كصورة جاهزة بلا إعادة رسم للنقش الثقيل — يزيل التقطيع */
+body.nav-busy .view.active { will-change: transform; }
+body.nav-busy .hero::before,
+body.nav-busy .hero::after { animation-play-state: paused; }
 
 .hidden { display: none !important; }
 
@@ -411,9 +417,9 @@ button {
   bottom: 0; right: 0; left: 0;
   height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
